@@ -278,8 +278,18 @@
     // aparelho) tenha id, updatedAt, synced e deletado — necessário
     // pra sincronização com a nuvem funcionar em dados antigos também.
     // ==================================================================
+    let ultimoIdGerado = 0;
     function gerarId() {
-        return Date.now() + Math.floor(Math.random() * 1000);
+        // Faixa aleatória 1000x maior que antes (reduz colisão entre
+        // aparelhos diferentes), mais um contador estritamente crescente
+        // que garante que NUNCA repete dentro do mesmo aparelho/sessão,
+        // mesmo se dois lançamentos forem criados no mesmo milissegundo.
+        let novoId = Date.now() + Math.floor(Math.random() * 1000000);
+        if (novoId <= ultimoIdGerado) {
+            novoId = ultimoIdGerado + 1;
+        }
+        ultimoIdGerado = novoId;
+        return novoId;
     }
 
     function migrarRegistro(item) {
@@ -290,11 +300,30 @@
         return item;
     }
 
+    function corrigirIdsDuplicados(lista) {
+        const idsVistos = new Set();
+        let corrigiu = false;
+        lista.forEach(item => {
+            if (idsVistos.has(item.id)) {
+                item.id = gerarId();
+                item.synced = false; // precisa sincronizar de novo com o id novo
+                corrigiu = true;
+            }
+            idsVistos.add(item.id);
+        });
+        return corrigiu;
+    }
+
     function migrarDados() {
         logs.forEach(migrarRegistro);
         bancoDados.forEach(migrarRegistro);
+        const corrigiuLogs = corrigirIdsDuplicados(logs);
+        const corrigiuServicos = corrigirIdsDuplicados(bancoDados);
         localStorage.setItem('producao_logs', JSON.stringify(logs));
         localStorage.setItem('app_banco_dados', JSON.stringify(bancoDados));
+        if (corrigiuLogs || corrigiuServicos) {
+            console.warn('Encontrado e corrigido id duplicado nos dados locais.');
+        }
     }
     migrarDados();
 
@@ -793,10 +822,32 @@
     }
 
     // ---------- Salvamento em cascata: Web Share -> download <a> -> nova aba ----------
+    function blobParaBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]); // remove o prefixo "data:...;base64,"
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
     async function salvarArquivo(blob, nomeArquivo, mimeType) {
-        // Tentativa 1: Web Share nativo (funciona melhor em WebViews travados,
-        // porque abre a folha de compartilhamento do Android em vez de depender
-        // do gerenciador de downloads do app).
+        // Tentativa 1: ponte nativa do app — grava direto na pasta Downloads
+        // do aparelho via MediaStore, sem depender do WebView reconhecer
+        // download nenhum. Só existe dentro do app instalado de verdade.
+        if (typeof AndroidFileSaver !== 'undefined') {
+            try {
+                const base64 = await blobParaBase64(blob);
+                const salvou = AndroidFileSaver.salvarArquivo(nomeArquivo, mimeType, base64);
+                if (salvou) {
+                    alert('Salvo na pasta Downloads do aparelho: ' + nomeArquivo);
+                    return;
+                }
+            } catch (e) { /* segue para a próxima tentativa */ }
+        }
+
+        // Tentativa 2: Web Share nativo (útil testando fora do app real, ex:
+        // navegador comum, onde a ponte acima não existe)
         try {
             const arquivo = new File([blob], nomeArquivo, { type: mimeType });
             if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
@@ -805,7 +856,7 @@
             }
         } catch (e) { /* segue para a próxima tentativa */ }
 
-        // Tentativa 2: download clássico via <a download>
+        // Tentativa 3: download clássico via <a download>
         try {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -818,7 +869,7 @@
             return;
         } catch (e) { /* segue para a próxima tentativa */ }
 
-        // Tentativa 3: abrir como Data URI numa nova aba (o visualizador padrão do
+        // Tentativa 4: abrir como Data URI numa nova aba (o visualizador padrão do
         // Android pode oferecer a opção de salvar a partir daí)
         try {
             const reader = new FileReader();
@@ -1229,9 +1280,9 @@
     // conteúdo no meio do uso atual.
     // ==================================================================
 
-    // >>> Depois de publicar na Vercel, troque pela URL real do seu projeto <<<
-    const APP_VERSAO_ATUAL = '1.0.0';
-    const URL_MANIFESTO_ATUALIZACAO = 'https://SEU-APP.vercel.app/version.json';
+    // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
+    const APP_VERSAO_ATUAL = '1.0.2';
+    const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao() {
         // A ponte AndroidUpdater só existe dentro do app instalado de verdade
