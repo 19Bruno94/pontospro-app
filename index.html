@@ -1076,6 +1076,7 @@
     function sairConta() {
         if (!confirm('Sair da conta? Os dados já sincronizados continuam guardados na nuvem, e os locais permanecem neste aparelho.')) return;
         limparSessao();
+        if (typeof AndroidBiometric !== 'undefined') AndroidBiometric.removerSessaoSegura();
         atualizarTelaConta();
     }
 
@@ -1215,6 +1216,11 @@
             await entrarConta(email, senha);
             atualizarTelaConta();
             tentarSincronizar();
+            if (biometriaDisponivelNoApp() && !temLoginBiometricoSalvo()) {
+                if (confirm('Quer ativar o login por digital neste aparelho? Assim não precisa digitar a senha da próxima vez.')) {
+                    handleAtivarBiometria();
+                }
+            }
         } catch (e) { alert(e.message); }
     }
 
@@ -1234,6 +1240,47 @@
         } catch (e) { alert(e.message); }
     }
 
+    function biometriaDisponivelNoApp() {
+        return typeof AndroidBiometric !== 'undefined' && AndroidBiometric.biometriaDisponivel();
+    }
+
+    function temLoginBiometricoSalvo() {
+        return typeof AndroidBiometric !== 'undefined' && AndroidBiometric.temSessaoSalva();
+    }
+
+    function handleEntrarComDigital() {
+        if (typeof AndroidBiometric === 'undefined') return;
+        window.receberResultadoBiometria = function (sessaoJson) {
+            if (sessaoJson) {
+                try {
+                    salvarSessao(JSON.parse(sessaoJson));
+                    atualizarTelaConta();
+                    tentarSincronizar();
+                } catch (e) {
+                    alert('Não foi possível ler a sessão salva. Entre manualmente com e-mail e senha.');
+                }
+            }
+            // se cancelou ou falhou, não faz nada — a tela de login continua ali
+        };
+        AndroidBiometric.autenticarComDigital();
+    }
+
+    function handleAtivarBiometria() {
+        const sessao = getSessao();
+        if (!sessao) return;
+        const ok = AndroidBiometric.salvarSessaoSegura(JSON.stringify(sessao));
+        alert(ok
+            ? 'Login por digital ativado! Da próxima vez você pode entrar sem digitar a senha.'
+            : 'Não foi possível ativar — confira se há digital cadastrada nas configurações do aparelho.');
+        atualizarTelaConta();
+    }
+
+    function handleDesativarBiometria() {
+        if (!confirm('Remover o login por digital deste aparelho?')) return;
+        AndroidBiometric.removerSessaoSegura();
+        atualizarTelaConta();
+    }
+
     function atualizarTelaConta() {
         const area = document.getElementById('areaConta');
         if (!area) return;
@@ -1245,7 +1292,12 @@
 
         const sessao = getSessao();
         if (!sessao) {
+            const mostrarBotaoDigital = biometriaDisponivelNoApp() && temLoginBiometricoSalvo();
             area.innerHTML = `
+                ${mostrarBotaoDigital ? `
+                    <button type="button" onclick="handleEntrarComDigital()">👆 Entrar com Digital</button>
+                    <p style="text-align:center; font-size:0.8rem; color:#888; margin:10px 0;">ou entre com e-mail e senha:</p>
+                ` : ''}
                 <div class="form-group"><label>E-mail:</label><input type="email" id="contaEmail"></div>
                 <div class="form-group"><label>Senha:</label><input type="password" id="contaSenha"></div>
                 <div class="btn-linha">
@@ -1256,6 +1308,8 @@
         } else {
             const pendentes = logs.filter(l => !l.synced).length + bancoDados.filter(b => !b.synced).length;
             const ultimaSync = localStorage.getItem('sb_ultima_sync');
+            const podeBiometria = biometriaDisponivelNoApp();
+            const temBiometriaAtiva = temLoginBiometricoSalvo();
             area.innerHTML = `
                 <p>Logado como <strong>${sessao.email}</strong></p>
                 <p style="font-size:0.85rem; color:#666;">
@@ -1267,7 +1321,15 @@
                     <button type="button" onclick="tentarSincronizar()">🔄 Sincronizar Agora</button>
                     <button type="button" class="btn-secundario" onclick="sairConta()">Sair</button>
                 </div>
-                ${ultimoErroSync ? `<p style="color:#c0392b; font-size:0.82rem; margin-top:10px; background:#fdecea; padding:8px; border-radius:5px;">❌ Erro na última sincronização: ${ultimoErroSync}</p>` : ''}`;
+                ${ultimoErroSync ? `<p style="color:#c0392b; font-size:0.82rem; margin-top:10px; background:#fdecea; padding:8px; border-radius:5px;">❌ Erro na última sincronização: ${ultimoErroSync}</p>` : ''}
+                ${podeBiometria ? `
+                    <hr style="margin:14px 0; border:none; border-top:1px solid #eee;">
+                    ${temBiometriaAtiva
+                        ? `<p style="font-size:0.85rem;">👆 Login por digital: <strong style="color:#2d5016;">ativado</strong></p>
+                           <button type="button" class="btn-secundario" onclick="handleDesativarBiometria()">Desativar Login por Digital</button>`
+                        : `<button type="button" onclick="handleAtivarBiometria()">👆 Ativar Login por Digital</button>`
+                    }
+                ` : ''}`;
         }
     }
 
@@ -1284,7 +1346,7 @@
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.0.3';
+    const APP_VERSAO_ATUAL = '1.1.0';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
