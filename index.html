@@ -47,7 +47,10 @@
 </head>
 <body>
 
-<header id="app-title">Produção Diária</header>
+<header style="position: sticky; top: 0; z-index: 100;">
+    <span id="app-title">Produção Diária</span>
+    <span id="indicadorVersao" onclick="verificarAtualizacaoManual()" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); font-size:0.65rem; font-weight:normal; opacity:0.85; cursor:pointer; white-space:nowrap;">v··· 🔄</span>
+</header>
 
 <div class="container">
     <div id="tab-lancamento" class="tab-content active">
@@ -1281,40 +1284,86 @@
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.0.2';
+    const APP_VERSAO_ATUAL = '1.0.3';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
-    async function verificarAtualizacao() {
+    async function verificarAtualizacao(manual = false) {
         // A ponte AndroidUpdater só existe dentro do app instalado de verdade
-        // (não existe testando aqui no navegador/preview) — por segurança,
-        // só tenta atualizar quando está rodando no app real.
-        if (typeof AndroidUpdater === 'undefined') return;
-        if (!navigator.onLine) return;
-        if (URL_MANIFESTO_ATUALIZACAO.includes('SEU-APP')) return; // ainda não configurado
+        // (não existe testando aqui no navegador/preview).
+        if (typeof AndroidUpdater === 'undefined') {
+            if (manual) alert('Verificação de atualização só funciona dentro do app instalado, não no navegador.');
+            return;
+        }
+        if (!navigator.onLine) {
+            if (manual) alert('Sem internet agora — tente de novo com conexão.');
+            return;
+        }
+        if (URL_MANIFESTO_ATUALIZACAO.includes('SEU-APP')) {
+            if (manual) alert('Atualização automática ainda não configurada neste app.');
+            return;
+        }
+
+        if (manual) atualizarIndicadorVersao('Verificando... ⏳');
 
         try {
             const respManifesto = await fetch(URL_MANIFESTO_ATUALIZACAO, { cache: 'no-store' });
-            if (!respManifesto.ok) return;
+            if (!respManifesto.ok) {
+                if (manual) alert('Não foi possível checar agora (site fora do ar?).');
+                atualizarIndicadorVersao();
+                return;
+            }
             const manifesto = await respManifesto.json();
 
-            if (!manifesto.versao || manifesto.versao === APP_VERSAO_ATUAL) return; // já está atualizado
-            if (localStorage.getItem('atualizacao_ja_baixada_versao') === manifesto.versao) return; // já baixou essa versão antes
+            if (!manifesto.versao || manifesto.versao === APP_VERSAO_ATUAL) {
+                if (manual) alert('Você já está na versão mais recente (v' + APP_VERSAO_ATUAL + ').');
+                atualizarIndicadorVersao();
+                return;
+            }
+
+            if (localStorage.getItem('atualizacao_ja_baixada_versao') === manifesto.versao) {
+                if (manual) alert('Versão ' + manifesto.versao + ' já baixada — feche e abra o app de novo pra aplicar.');
+                atualizarIndicadorVersao();
+                return;
+            }
 
             const urlHtml = manifesto.url || URL_MANIFESTO_ATUALIZACAO.replace('version.json', 'index.html');
             const respHtml = await fetch(urlHtml, { cache: 'no-store' });
-            if (!respHtml.ok) return;
+            if (!respHtml.ok) {
+                if (manual) alert('Achou versão nova, mas falhou ao baixar. Tenta de novo.');
+                atualizarIndicadorVersao();
+                return;
+            }
             const htmlNovo = await respHtml.text();
 
-            if (htmlNovo.length < 1000) return; // proteção: resposta suspeita/curta demais, não salva
+            if (htmlNovo.length < 1000) {
+                if (manual) alert('Resposta do servidor parece inválida — não foi salva.');
+                atualizarIndicadorVersao();
+                return;
+            }
 
             const salvou = AndroidUpdater.salvarNovaVersao(htmlNovo);
             if (salvou) {
                 localStorage.setItem('atualizacao_ja_baixada_versao', manifesto.versao);
                 mostrarAvisoAtualizacao(manifesto.versao);
+            } else if (manual) {
+                alert('Achou versão nova, mas não conseguiu salvar no aparelho.');
             }
+            atualizarIndicadorVersao();
         } catch (e) {
             console.warn('Falha ao checar atualização:', e.message);
+            if (manual) alert('Erro ao checar atualização: ' + e.message);
+            atualizarIndicadorVersao();
         }
+    }
+
+    function verificarAtualizacaoManual() {
+        verificarAtualizacao(true);
+    }
+
+    function atualizarIndicadorVersao(textoTemporario) {
+        const el = document.getElementById('indicadorVersao');
+        if (!el) return;
+        el.innerHTML = textoTemporario ? textoTemporario : `v${APP_VERSAO_ATUAL} 🔄`;
     }
 
     function mostrarAvisoAtualizacao(versao) {
@@ -1326,8 +1375,9 @@
         document.body.appendChild(aviso);
     }
 
+    atualizarIndicadorVersao();
     verificarAtualizacao();
-    window.addEventListener('online', verificarAtualizacao);
+    window.addEventListener('online', () => verificarAtualizacao());
 </script>
 
 
