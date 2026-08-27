@@ -1178,6 +1178,32 @@
 
     let ultimoErroSync = null;
 
+    // Evita duplicar serviço: se um serviço local ainda não sincronizado
+    // tem o MESMO NOME de um serviço que a nuvem já confirmou (synced),
+    // descarta o duplicado local em vez de enviar como novo. Isso é o que
+    // acontece toda vez que se instala o app do zero: ele nasce com uma
+    // lista padrão de serviços, e sem isso, cada instalação nova somaria
+    // esses padrões de novo na nuvem.
+    function reconciliarServicosPorNome() {
+        let mudou = false;
+        bancoDados.forEach(local => {
+            if (local.synced || local.deletado) return;
+            const nomeNormalizado = local.nome.trim().toUpperCase();
+            const jaExisteNaNuvem = bancoDados.some(outro =>
+                outro !== local &&
+                outro.synced &&
+                !outro.deletado &&
+                outro.nome.trim().toUpperCase() === nomeNormalizado
+            );
+            if (jaExisteNaNuvem) {
+                local.deletado = true;
+                local.synced = true; // não precisa mais subir — já era só um duplicado local
+                mudou = true;
+            }
+        });
+        if (mudou) salvarLocal();
+    }
+
     async function tentarSincronizar() {
         if (!sbConfigurado()) return; // ainda não configurou o Supabase — não faz nada, app continua 100% local
         if (!estaLogado()) { atualizarTelaConta(); return; }
@@ -1190,8 +1216,9 @@
         try {
             const sessao = await renovarTokenSeNecessario();
             if (!sessao) throw new Error('Sessão expirada, entre novamente.');
-            await empurrarPendentes(sessao);
             await puxarNuvem();
+            reconciliarServicosPorNome();
+            await empurrarPendentes(sessao);
             localStorage.setItem('sb_ultima_sync', String(Date.now()));
             atualizarSelectServicos();
             atualizarTabelaLancamentos();
@@ -1346,7 +1373,7 @@
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.1.0';
+    const APP_VERSAO_ATUAL = '1.1.1';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
