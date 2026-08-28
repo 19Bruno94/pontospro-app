@@ -42,7 +42,8 @@
         #areaTextoFallback { margin-top: 10px; }
         #areaTextoFallback textarea { min-height: 140px; font-family: monospace; font-size: 0.75rem; }
         .aviso-salvamento { font-size: 0.78rem; color: #666; margin-top: 8px; line-height: 1.4; }
-        select[multiple] { height: auto; }
+select[multiple] { height: auto; }
+#modalConfirmacao.aberto { display: flex !important; }
     </style>
 </head>
 <body>
@@ -281,6 +282,21 @@
     // aparelho) tenha id, updatedAt, synced e deletado — necessário
     // pra sincronização com a nuvem funcionar em dados antigos também.
     // ==================================================================
+    // Modal de confirmação próprio — substitui o confirm() nativo do
+    // navegador, que se mostrou pouco confiável dentro do WebView.
+    let modalConfirmacaoCallback = null;
+    function confirmarAcao(mensagem, callback) {
+        document.getElementById('modalConfirmacaoTexto').textContent = mensagem;
+        document.getElementById('modalConfirmacao').classList.add('aberto');
+        modalConfirmacaoCallback = callback;
+    }
+    function modalConfirmacaoResponder(resposta) {
+        document.getElementById('modalConfirmacao').classList.remove('aberto');
+        const cb = modalConfirmacaoCallback;
+        modalConfirmacaoCallback = null;
+        if (cb) cb(resposta);
+    }
+
     let ultimoIdGerado = 0;
     function gerarId() {
         // Faixa aleatória 1000x maior que antes (reduz colisão entre
@@ -428,7 +444,8 @@
     // Remover Lançamento Diário (exclusão suave — precisa ficar marcado
     // pra sincronizar a remoção com a nuvem também, não só apagar local)
     function deletarLog(id) {
-        if(confirm("Deseja apagar este lançamento de produção?")) {
+        confirmarAcao("Deseja apagar este lançamento de produção?", (ok) => {
+            if (!ok) return;
             const log = logs.find(l => l.id === id);
             if (!log) return;
             log.deletado = true;
@@ -437,7 +454,7 @@
             salvarLocal();
             atualizarTabelaLancamentos();
             tentarSincronizar();
-        }
+        });
     }
 
     // Exibir Tabela de Lançamentos Recentes
@@ -493,7 +510,8 @@
     function deletarServico(id) {
         const item = bancoDados.find(b => b.id === id);
         if (!item) return;
-        if(confirm(`Tem a certeza que deseja apagar o serviço "${item.nome}"? Lançamentos antigos que usam este nome não serão apagados.`)) {
+        confirmarAcao(`Tem a certeza que deseja apagar o serviço "${item.nome}"? Lançamentos antigos que usam este nome não serão apagados.`, (ok) => {
+            if (!ok) return;
             item.deletado = true;
             item.synced = false;
             item.updatedAt = Date.now();
@@ -501,7 +519,7 @@
             atualizarSelectServicos();
             atualizarTabelaConfigServicos();
             tentarSincronizar();
-        }
+        });
     }
 
     // Preencher o formulário com os dados de um serviço existente para alterar a pontuação
@@ -954,7 +972,16 @@
         if (!backupCarregado) return;
 
         if (modo === 'substituir') {
-            if (!confirm('Isso vai APAGAR os dados atuais deste aparelho e substituir pelos dados do backup. Confirma?')) return;
+            confirmarAcao('Isso vai APAGAR os dados atuais deste aparelho e substituir pelos dados do backup. Confirma?', (ok) => {
+                if (ok) executarRestauracao(modo);
+            });
+        } else {
+            executarRestauracao(modo);
+        }
+    }
+
+    function executarRestauracao(modo) {
+        if (modo === 'substituir') {
             bancoDados = backupCarregado.bancoDados;
             logs = backupCarregado.logs;
         } else {
@@ -1074,10 +1101,13 @@
     }
 
     function sairConta() {
-        if (!confirm('Sair da conta? Os dados já sincronizados continuam guardados na nuvem, e os locais permanecem neste aparelho.')) return;
-        limparSessao();
-        if (typeof AndroidBiometric !== 'undefined') AndroidBiometric.removerSessaoSegura();
-        atualizarTelaConta();
+        confirmarAcao('Sair da conta? Os dados já sincronizados continuam guardados na nuvem, e os locais permanecem neste aparelho.', (ok) => {
+            if (!ok) return;
+            limparSessao();
+            if (typeof AndroidBiometric !== 'undefined') AndroidBiometric.removerSessaoSegura();
+            atualizarTelaConta();
+            mostrarTelaLoginObrigatorio();
+        });
     }
 
     // Faz uma chamada autenticada na API REST do Supabase (PostgREST)
@@ -1176,6 +1206,44 @@
         salvarLocal();
     }
 
+    // Traz o catálogo OFICIAL de serviços (mantido só por você no Supabase,
+    // tabela servicos_padrao) e corrige localmente qualquer serviço cujo
+    // valor esteja desatualizado — ou adiciona, se for um serviço novo que
+    // ainda não existe no aparelho. É isso que permite corrigir a
+    // pontuação de um serviço uma vez só e todo mundo com o app receber
+    // sozinho, sem precisar editar aparelho por aparelho.
+    async function puxarServicosPadrao() {
+        let padrao;
+        try {
+            padrao = await sbFetch('servicos_padrao?select=*', { method: 'GET' });
+        } catch (e) {
+            return; // tabela pode não existir ainda, ou sem permissão — não quebra o resto da sincronização
+        }
+        if (!padrao || !Array.isArray(padrao)) return;
+
+        let mudou = false;
+        padrao.forEach(oficial => {
+            const nomeNormalizado = oficial.nome.trim().toUpperCase();
+            const local = bancoDados.find(b => !b.deletado && b.nome.trim().toUpperCase() === nomeNormalizado);
+
+            if (!local) {
+                bancoDados.push({
+                    id: gerarId(), nome: oficial.nome, pontos: oficial.pontos, tec: oficial.tec,
+                    updatedAt: Date.now(), synced: false, deletado: false
+                });
+                mudou = true;
+            } else if (local.pontos !== oficial.pontos || local.tec !== oficial.tec) {
+                local.pontos = oficial.pontos;
+                local.tec = oficial.tec;
+                local.updatedAt = Date.now();
+                local.synced = false;
+                mudou = true;
+            }
+        });
+
+        if (mudou) salvarLocal();
+    }
+
     let ultimoErroSync = null;
 
     // Evita duplicar serviço: se um serviço local ainda não sincronizado
@@ -1217,6 +1285,7 @@
             const sessao = await renovarTokenSeNecessario();
             if (!sessao) throw new Error('Sessão expirada, entre novamente.');
             await puxarNuvem();
+            await puxarServicosPadrao();
             reconciliarServicosPorNome();
             await empurrarPendentes(sessao);
             localStorage.setItem('sb_ultima_sync', String(Date.now()));
@@ -1235,6 +1304,84 @@
     window.addEventListener('online', tentarSincronizar);
 
     // ---------- Tela "Conta" ----------
+    // ---------- Tela de login obrigatória (bloqueia o app até logar) ----------
+    function mostrarTelaLoginObrigatorio() {
+        document.getElementById('telaLoginObrigatorio').style.display = 'block';
+        renderizarLoginObrigatorio();
+    }
+
+    function esconderTelaLoginObrigatorio() {
+        document.getElementById('telaLoginObrigatorio').style.display = 'none';
+    }
+
+    function renderizarLoginObrigatorio() {
+        if (!sbConfigurado()) { esconderTelaLoginObrigatorio(); return; } // sem nuvem configurada, não trava o app
+        const area = document.getElementById('areaLoginObrigatorio');
+        const mostrarBotaoDigital = biometriaDisponivelNoApp() && temLoginBiometricoSalvo();
+        area.innerHTML = `
+            ${mostrarBotaoDigital ? `
+                <button type="button" onclick="handleEntrarComDigitalGate()">👆 Entrar com Digital</button>
+                <p style="text-align:center; font-size:0.8rem; color:#888; margin:10px 0;">ou entre com e-mail e senha:</p>
+            ` : ''}
+            <div class="form-group"><label>E-mail:</label><input type="email" id="gateEmail"></div>
+            <div class="form-group"><label>Senha:</label><input type="password" id="gateSenha"></div>
+            <div class="btn-linha">
+                <button type="button" onclick="handleEntrarGate()">Entrar</button>
+                <button type="button" class="btn-secundario" onclick="handleCadastrarGate()">Criar Conta</button>
+            </div>`;
+    }
+
+    async function handleEntrarGate() {
+        const email = document.getElementById('gateEmail').value.trim();
+        const senha = document.getElementById('gateSenha').value;
+        if (!email || !senha) { alert('Preencha e-mail e senha.'); return; }
+        try {
+            await entrarConta(email, senha);
+            esconderTelaLoginObrigatorio();
+            atualizarTelaConta();
+            tentarSincronizar();
+            if (biometriaDisponivelNoApp() && !temLoginBiometricoSalvo()) {
+                confirmarAcao('Quer ativar o login por digital neste aparelho? Assim não precisa digitar a senha da próxima vez.', (ok) => {
+                    if (ok) handleAtivarBiometria();
+                });
+            }
+        } catch (e) { alert(e.message); }
+    }
+
+    async function handleCadastrarGate() {
+        const email = document.getElementById('gateEmail').value.trim();
+        const senha = document.getElementById('gateSenha').value;
+        if (!email || !senha) { alert('Preencha e-mail e senha.'); return; }
+        if (senha.length < 6) { alert('A senha precisa ter pelo menos 6 caracteres.'); return; }
+        try {
+            const r = await cadastrarConta(email, senha);
+            if (!r.access_token) {
+                alert('Conta criada! Verifique seu e-mail para confirmar antes de entrar (depende da configuração do projeto Supabase).');
+            } else {
+                esconderTelaLoginObrigatorio();
+                atualizarTelaConta();
+                tentarSincronizar();
+            }
+        } catch (e) { alert(e.message); }
+    }
+
+    function handleEntrarComDigitalGate() {
+        if (typeof AndroidBiometric === 'undefined') return;
+        window.receberResultadoBiometria = function (sessaoJson) {
+            if (sessaoJson) {
+                try {
+                    salvarSessao(JSON.parse(sessaoJson));
+                    esconderTelaLoginObrigatorio();
+                    atualizarTelaConta();
+                    tentarSincronizar();
+                } catch (e) {
+                    alert('Não foi possível ler a sessão salva. Entre manualmente com e-mail e senha.');
+                }
+            }
+        };
+        AndroidBiometric.autenticarComDigital();
+    }
+
     async function handleEntrarConta() {
         const email = document.getElementById('contaEmail').value.trim();
         const senha = document.getElementById('contaSenha').value;
@@ -1244,9 +1391,9 @@
             atualizarTelaConta();
             tentarSincronizar();
             if (biometriaDisponivelNoApp() && !temLoginBiometricoSalvo()) {
-                if (confirm('Quer ativar o login por digital neste aparelho? Assim não precisa digitar a senha da próxima vez.')) {
-                    handleAtivarBiometria();
-                }
+                confirmarAcao('Quer ativar o login por digital neste aparelho? Assim não precisa digitar a senha da próxima vez.', (ok) => {
+                    if (ok) handleAtivarBiometria();
+                });
             }
         } catch (e) { alert(e.message); }
     }
@@ -1303,9 +1450,11 @@
     }
 
     function handleDesativarBiometria() {
-        if (!confirm('Remover o login por digital deste aparelho?')) return;
-        AndroidBiometric.removerSessaoSegura();
-        atualizarTelaConta();
+        confirmarAcao('Remover o login por digital deste aparelho?', (ok) => {
+            if (!ok) return;
+            AndroidBiometric.removerSessaoSegura();
+            atualizarTelaConta();
+        });
     }
 
     function atualizarTelaConta() {
@@ -1373,7 +1522,7 @@
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.1.1';
+    const APP_VERSAO_ATUAL = '1.3.0';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
@@ -1467,9 +1616,32 @@
     atualizarIndicadorVersao();
     verificarAtualizacao();
     window.addEventListener('online', () => verificarAtualizacao());
+
+    // Ao abrir o app: se a nuvem estiver configurada e não houver sessão
+    // ativa, bloqueia o uso até logar (por digital ou e-mail/senha).
+    if (sbConfigurado() && !estaLogado()) {
+        mostrarTelaLoginObrigatorio();
+    }
 </script>
 
 
+<div id="telaLoginObrigatorio" style="display:none; position:fixed; inset:0; background:#f5f5f5; z-index:9998; overflow-y:auto; padding:24px 16px;">
+    <div style="max-width:400px; margin:60px auto 0;">
+        <h2 style="text-align:center; color:#0056b3; margin-bottom:4px;">Produção vs Pontuação</h2>
+        <p style="text-align:center; color:#666; font-size:0.85rem; margin-bottom:24px;">Entre para continuar</p>
+        <div id="areaLoginObrigatorio" class="card"></div>
+    </div>
+</div>
+
+<div id="modalConfirmacao" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#fff; border-radius:10px; padding:20px; max-width:340px; width:100%; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+        <p id="modalConfirmacaoTexto" style="margin:0 0 16px; font-size:0.95rem; line-height:1.4;"></p>
+        <div class="btn-linha">
+            <button type="button" onclick="modalConfirmacaoResponder(true)">Confirmar</button>
+            <button type="button" class="btn-secundario" onclick="modalConfirmacaoResponder(false)">Cancelar</button>
+        </div>
+    </div>
+</div>
 <script>
 /** @license
  *
