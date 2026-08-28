@@ -297,6 +297,12 @@ select[multiple] { height: auto; }
         if (cb) cb(resposta);
     }
 
+    // Controla se a tela de bloqueio já foi passada NESTA abertura do app.
+    // Propositalmente NÃO fica guardado no localStorage — reinicia pra
+    // false toda vez que o app é aberto do zero, mesmo com sessão válida
+    // já salva. É isso que faz pedir login sempre, e não só na primeira vez.
+    let desbloqueadoNestaSessao = false;
+
     let ultimoIdGerado = 0;
     function gerarId() {
         // Faixa aleatória 1000x maior que antes (reduz colisão entre
@@ -1105,6 +1111,7 @@ select[multiple] { height: auto; }
             if (!ok) return;
             limparSessao();
             if (typeof AndroidBiometric !== 'undefined') AndroidBiometric.removerSessaoSegura();
+            desbloqueadoNestaSessao = false;
             atualizarTelaConta();
             mostrarTelaLoginObrigatorio();
         });
@@ -1311,6 +1318,7 @@ select[multiple] { height: auto; }
     }
 
     function esconderTelaLoginObrigatorio() {
+        desbloqueadoNestaSessao = true;
         document.getElementById('telaLoginObrigatorio').style.display = 'none';
     }
 
@@ -1522,7 +1530,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.3.0';
+    const APP_VERSAO_ATUAL = '1.3.1';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
@@ -1617,9 +1625,11 @@ select[multiple] { height: auto; }
     verificarAtualizacao();
     window.addEventListener('online', () => verificarAtualizacao());
 
-    // Ao abrir o app: se a nuvem estiver configurada e não houver sessão
-    // ativa, bloqueia o uso até logar (por digital ou e-mail/senha).
-    if (sbConfigurado() && !estaLogado()) {
+    // Ao abrir o app: se a nuvem estiver configurada, sempre bloqueia até
+    // logar de novo (por digital ou e-mail/senha) — mesmo com sessão já
+    // salva de antes. A sessão salva continua servindo pra sincronização,
+    // só a TELA exige confirmação a cada abertura.
+    if (sbConfigurado() && !desbloqueadoNestaSessao) {
         mostrarTelaLoginObrigatorio();
     }
 </script>
