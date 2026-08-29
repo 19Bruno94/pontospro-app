@@ -859,6 +859,8 @@ select[multiple] { height: auto; }
     }
 
     async function salvarArquivo(blob, nomeArquivo, mimeType) {
+        const diagnostico = [];
+
         // Tentativa 1: ponte nativa do app — grava direto na pasta Downloads
         // do aparelho via MediaStore, sem depender do WebView reconhecer
         // download nenhum. Só existe dentro do app instalado de verdade.
@@ -870,7 +872,12 @@ select[multiple] { height: auto; }
                     alert('Salvo na pasta Downloads do aparelho: ' + nomeArquivo);
                     return;
                 }
-            } catch (e) { /* segue para a próxima tentativa */ }
+                diagnostico.push('Ponte nativa (AndroidFileSaver): chamou e retornou FALHA.');
+            } catch (e) {
+                diagnostico.push('Ponte nativa (AndroidFileSaver): erro — ' + e.message);
+            }
+        } else {
+            diagnostico.push('Ponte nativa (AndroidFileSaver): não existe neste contexto (normal se estiver testando fora do app instalado).');
         }
 
         // Tentativa 2: Web Share nativo (útil testando fora do app real, ex:
@@ -881,7 +888,10 @@ select[multiple] { height: auto; }
                 await navigator.share({ files: [arquivo], title: nomeArquivo });
                 return;
             }
-        } catch (e) { /* segue para a próxima tentativa */ }
+            diagnostico.push('Web Share: não suportado ou recusado pelo aparelho.');
+        } catch (e) {
+            diagnostico.push('Web Share: erro — ' + e.message);
+        }
 
         // Tentativa 3: download clássico via <a download>
         try {
@@ -893,8 +903,10 @@ select[multiple] { height: auto; }
             a.click();
             document.body.removeChild(a);
             setTimeout(() => URL.revokeObjectURL(url), 8000);
-            return;
-        } catch (e) { /* segue para a próxima tentativa */ }
+            diagnostico.push('Download via <a>: tentado (não há como confirmar se realmente baixou a partir daqui).');
+        } catch (e) {
+            diagnostico.push('Download via <a>: erro — ' + e.message);
+        }
 
         // Tentativa 4: abrir como Data URI numa nova aba (o visualizador padrão do
         // Android pode oferecer a opção de salvar a partir daí)
@@ -903,8 +915,10 @@ select[multiple] { height: auto; }
             reader.onload = function () { window.open(reader.result, '_blank'); };
             reader.readAsDataURL(blob);
         } catch (e) {
-            alert('Não foi possível salvar automaticamente. Use "Ver texto do relatório" para copiar manualmente.');
+            diagnostico.push('Nova aba: erro — ' + e.message);
         }
+
+        alert('Não foi possível confirmar o salvamento automático. Use "Ver texto do relatório" para copiar manualmente.\n\nDetalhes técnicos (tire print e envie pro suporte):\n' + diagnostico.join('\n'));
     }
 
     // ==================================================================
@@ -1325,12 +1339,9 @@ select[multiple] { height: auto; }
     function renderizarLoginObrigatorio() {
         if (!sbConfigurado()) { esconderTelaLoginObrigatorio(); return; } // sem nuvem configurada, não trava o app
         const area = document.getElementById('areaLoginObrigatorio');
-        const mostrarBotaoDigital = biometriaDisponivelNoApp() && temLoginBiometricoSalvo();
+        // Login por digital temporariamente fora da tela de bloqueio —
+        // volta depois que o fluxo de e-mail/senha estiver 100% confirmado.
         area.innerHTML = `
-            ${mostrarBotaoDigital ? `
-                <button type="button" onclick="handleEntrarComDigitalGate()">👆 Entrar com Digital</button>
-                <p style="text-align:center; font-size:0.8rem; color:#888; margin:10px 0;">ou entre com e-mail e senha:</p>
-            ` : ''}
             <div class="form-group"><label>E-mail:</label><input type="email" id="gateEmail"></div>
             <div class="form-group"><label>Senha:</label><input type="password" id="gateSenha"></div>
             <div class="btn-linha">
@@ -1348,11 +1359,6 @@ select[multiple] { height: auto; }
             esconderTelaLoginObrigatorio();
             atualizarTelaConta();
             tentarSincronizar();
-            if (biometriaDisponivelNoApp() && !temLoginBiometricoSalvo()) {
-                confirmarAcao('Quer ativar o login por digital neste aparelho? Assim não precisa digitar a senha da próxima vez.', (ok) => {
-                    if (ok) handleAtivarBiometria();
-                });
-            }
         } catch (e) { alert(e.message); }
     }
 
@@ -1398,11 +1404,6 @@ select[multiple] { height: auto; }
             await entrarConta(email, senha);
             atualizarTelaConta();
             tentarSincronizar();
-            if (biometriaDisponivelNoApp() && !temLoginBiometricoSalvo()) {
-                confirmarAcao('Quer ativar o login por digital neste aparelho? Assim não precisa digitar a senha da próxima vez.', (ok) => {
-                    if (ok) handleAtivarBiometria();
-                });
-            }
         } catch (e) { alert(e.message); }
     }
 
@@ -1476,12 +1477,7 @@ select[multiple] { height: auto; }
 
         const sessao = getSessao();
         if (!sessao) {
-            const mostrarBotaoDigital = biometriaDisponivelNoApp() && temLoginBiometricoSalvo();
             area.innerHTML = `
-                ${mostrarBotaoDigital ? `
-                    <button type="button" onclick="handleEntrarComDigital()">👆 Entrar com Digital</button>
-                    <p style="text-align:center; font-size:0.8rem; color:#888; margin:10px 0;">ou entre com e-mail e senha:</p>
-                ` : ''}
                 <div class="form-group"><label>E-mail:</label><input type="email" id="contaEmail"></div>
                 <div class="form-group"><label>Senha:</label><input type="password" id="contaSenha"></div>
                 <div class="btn-linha">
@@ -1492,8 +1488,6 @@ select[multiple] { height: auto; }
         } else {
             const pendentes = logs.filter(l => !l.synced).length + bancoDados.filter(b => !b.synced).length;
             const ultimaSync = localStorage.getItem('sb_ultima_sync');
-            const podeBiometria = biometriaDisponivelNoApp();
-            const temBiometriaAtiva = temLoginBiometricoSalvo();
             area.innerHTML = `
                 <p>Logado como <strong>${sessao.email}</strong></p>
                 <p style="font-size:0.85rem; color:#666;">
@@ -1505,15 +1499,7 @@ select[multiple] { height: auto; }
                     <button type="button" onclick="tentarSincronizar()">🔄 Sincronizar Agora</button>
                     <button type="button" class="btn-secundario" onclick="sairConta()">Sair</button>
                 </div>
-                ${ultimoErroSync ? `<p style="color:#c0392b; font-size:0.82rem; margin-top:10px; background:#fdecea; padding:8px; border-radius:5px;">❌ Erro na última sincronização: ${ultimoErroSync}</p>` : ''}
-                ${podeBiometria ? `
-                    <hr style="margin:14px 0; border:none; border-top:1px solid #eee;">
-                    ${temBiometriaAtiva
-                        ? `<p style="font-size:0.85rem;">👆 Login por digital: <strong style="color:#2d5016;">ativado</strong></p>
-                           <button type="button" class="btn-secundario" onclick="handleDesativarBiometria()">Desativar Login por Digital</button>`
-                        : `<button type="button" onclick="handleAtivarBiometria()">👆 Ativar Login por Digital</button>`
-                    }
-                ` : ''}`;
+                ${ultimoErroSync ? `<p style="color:#c0392b; font-size:0.82rem; margin-top:10px; background:#fdecea; padding:8px; border-radius:5px;">❌ Erro na última sincronização: ${ultimoErroSync}</p>` : ''}`;
         }
     }
 
@@ -1530,7 +1516,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.3.1';
+    const APP_VERSAO_ATUAL = '1.4.1';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
