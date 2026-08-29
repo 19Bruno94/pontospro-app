@@ -44,6 +44,7 @@
         .aviso-salvamento { font-size: 0.78rem; color: #666; margin-top: 8px; line-height: 1.4; }
 select[multiple] { height: auto; }
 #modalConfirmacao.aberto { display: flex !important; }
+#modalMensagem.aberto { display: flex !important; }
     </style>
 </head>
 <body>
@@ -297,6 +298,14 @@ select[multiple] { height: auto; }
         if (cb) cb(resposta);
     }
 
+    // Substitui alert() nativo — assim como o confirm(), ele se mostrou
+    // pouco confiável quando chamado de dentro de uma função assíncrona
+    // (depois de um await), silenciosamente não aparecendo em alguns casos.
+    function mostrarMensagem(texto) {
+        document.getElementById('modalMensagemTexto').textContent = texto;
+        document.getElementById('modalMensagem').classList.add('aberto');
+    }
+
     // Controla se a tela de bloqueio já foi passada NESTA abertura do app.
     // Propositalmente NÃO fica guardado no localStorage — reinicia pra
     // false toda vez que o app é aberto do zero, mesmo com sessão válida
@@ -442,7 +451,7 @@ select[multiple] { height: auto; }
             salvarLocal();
             atualizarTabelaLancamentos();
             document.getElementById('obsInput').value = '';
-            alert('Lançamento guardado com sucesso!');
+            mostrarMensagem('Lançamento guardado com sucesso!');
             tentarSincronizar();
         }
     });
@@ -494,14 +503,14 @@ select[multiple] { height: auto; }
             existente.tec = tec;
             existente.updatedAt = Date.now();
             existente.synced = false;
-            alert('Serviço existente atualizado com sucesso!');
+            mostrarMensagem('Serviço existente atualizado com sucesso!');
         } else {
             // Se for novo, adiciona
             bancoDados.push({
                 id: gerarId(), nome, pontos, tec,
                 updatedAt: Date.now(), synced: false, deletado: false
             });
-            alert('Novo serviço registado com sucesso!');
+            mostrarMensagem('Novo serviço registado com sucesso!');
         }
 
         salvarLocal();
@@ -672,7 +681,7 @@ select[multiple] { height: auto; }
     function validarSelecao() {
         const meses = mesesSelecionados();
         if (meses.length === 0) {
-            alert('Selecione pelo menos um mês antes de continuar.');
+            mostrarMensagem('Selecione pelo menos um mês antes de continuar.');
             return null;
         }
         return meses;
@@ -758,94 +767,102 @@ select[multiple] { height: auto; }
     }
 
     function handleExportarCSV() {
-        const meses = validarSelecao();
-        if (!meses) return;
-        const dados = dadosPorMes(meses);
-        const conteudo = gerarConteudoCSV(dados);
-        document.getElementById('textoFallback').value = conteudo;
-        const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
-        const nome = 'producao_' + meses[0] + (meses.length > 1 ? '_a_' + meses[meses.length - 1] : '') + '.csv';
-        salvarArquivo(blob, nome, 'text/csv');
+        try {
+            const meses = validarSelecao();
+            if (!meses) return;
+            const dados = dadosPorMes(meses);
+            const conteudo = gerarConteudoCSV(dados);
+            document.getElementById('textoFallback').value = conteudo;
+            const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
+            const nome = 'producao_' + meses[0] + (meses.length > 1 ? '_a_' + meses[meses.length - 1] : '') + '.csv';
+            salvarArquivo(blob, nome, 'text/csv');
+        } catch (e) {
+            mostrarMensagem('Erro ao gerar a planilha: ' + e.message + '\n\nTire print e envie pro suporte.');
+        }
     }
 
     // ---------- Exportar PDF (jsPDF, embutido localmente, sem depender de internet) ----------
     function handleExportarPDF() {
-        const meses = validarSelecao();
-        if (!meses) return;
-        if (!window.jspdf) {
-            alert('Biblioteca de PDF não carregou. Tente reabrir o app.');
-            return;
-        }
-        const dados = dadosPorMes(meses);
-        document.getElementById('textoFallback').value = gerarConteudoCSV(dados);
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        let y = 15;
+        try {
+            const meses = validarSelecao();
+            if (!meses) return;
+            if (!window.jspdf) {
+                mostrarMensagem('Biblioteca de PDF não carregou. Tente reabrir o app.');
+                return;
+            }
+            const dados = dadosPorMes(meses);
+            document.getElementById('textoFallback').value = gerarConteudoCSV(dados);
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let y = 15;
 
-        doc.setFontSize(16);
-        doc.setTextColor(0, 86, 179);
-        doc.text('Relatório de Produção', 14, y);
-        y += 7;
-        doc.setFontSize(9);
-        doc.setTextColor(100, 100, 100);
-        doc.text('Gerado em ' + new Date().toLocaleDateString('pt-BR'), 14, y);
-        y += 10;
-
-        dados.forEach(d => {
-            if (y > 265) { doc.addPage(); y = 15; }
-            doc.setFontSize(13);
+            doc.setFontSize(16);
             doc.setTextColor(0, 86, 179);
-            doc.text(d.nome, 14, y);
-            y += 6;
-
+            doc.text('Relatório de Produção', 14, y);
+            y += 7;
             doc.setFontSize(9);
-            doc.setTextColor(40, 40, 40);
-            doc.text('Total Pontos: ' + d.totalPontos.toFixed(1) + '   |   Qtd Serviços: ' + d.qtdServicos + '   |   Valor Estimado: R$ ' + d.valorEstimado.toFixed(2), 14, y);
-            y += 6;
+            doc.setTextColor(100, 100, 100);
+            doc.text('Gerado em ' + new Date().toLocaleDateString('pt-BR'), 14, y);
+            y += 10;
 
-            doc.setFillColor(238, 238, 238);
-            doc.rect(14, y, 182, 6, 'F');
-            doc.setFontSize(8);
-            doc.setTextColor(0, 0, 0);
-            doc.text('Data', 16, y + 4.2);
-            doc.text('Atividade', 42, y + 4.2);
-            doc.text('Tec', 132, y + 4.2);
-            doc.text('Pts', 150, y + 4.2);
-            doc.text('Obs', 164, y + 4.2);
-            y += 8;
+            dados.forEach(d => {
+                if (y > 265) { doc.addPage(); y = 15; }
+                doc.setFontSize(13);
+                doc.setTextColor(0, 86, 179);
+                doc.text(d.nome, 14, y);
+                y += 6;
 
-            d.logs.forEach(l => {
-                if (y > 280) {
-                    doc.addPage();
-                    y = 15;
-                }
+                doc.setFontSize(9);
+                doc.setTextColor(40, 40, 40);
+                doc.text('Total Pontos: ' + d.totalPontos.toFixed(1) + '   |   Qtd Serviços: ' + d.qtdServicos + '   |   Valor Estimado: R$ ' + d.valorEstimado.toFixed(2), 14, y);
+                y += 6;
+
+                doc.setFillColor(238, 238, 238);
+                doc.rect(14, y, 182, 6, 'F');
                 doc.setFontSize(8);
-                doc.text(l.data.split('-').reverse().join('/'), 16, y);
-                doc.text((l.atividade || '').substring(0, 42), 42, y);
-                doc.text(l.tec || '', 132, y);
-                doc.text(String(l.pontos), 150, y);
-                doc.text((l.obs || '').substring(0, 16), 164, y);
-                y += 5;
+                doc.setTextColor(0, 0, 0);
+                doc.text('Data', 16, y + 4.2);
+                doc.text('Atividade', 42, y + 4.2);
+                doc.text('Tec', 132, y + 4.2);
+                doc.text('Pts', 150, y + 4.2);
+                doc.text('Obs', 164, y + 4.2);
+                y += 8;
+
+                d.logs.forEach(l => {
+                    if (y > 280) {
+                        doc.addPage();
+                        y = 15;
+                    }
+                    doc.setFontSize(8);
+                    doc.text(l.data.split('-').reverse().join('/'), 16, y);
+                    doc.text((l.atividade || '').substring(0, 42), 42, y);
+                    doc.text(l.tec || '', 132, y);
+                    doc.text(String(l.pontos), 150, y);
+                    doc.text((l.obs || '').substring(0, 16), 164, y);
+                    y += 5;
+                });
+                y += 8;
             });
-            y += 8;
-        });
 
-        const canvas = document.getElementById('canvasComparativo');
-        if (canvas && canvas.width > 0) {
-            if (y > 190) { doc.addPage(); y = 15; }
-            doc.setFontSize(13);
-            doc.setTextColor(0, 86, 179);
-            doc.text('Gráfico Comparativo', 14, y);
-            y += 6;
-            try {
-                const imgData = canvas.toDataURL('image/png');
-                doc.addImage(imgData, 'PNG', 14, y, 180, 80);
-            } catch (e) { /* se falhar, segue sem o gráfico */ }
+            const canvas = document.getElementById('canvasComparativo');
+            if (canvas && canvas.width > 0) {
+                if (y > 190) { doc.addPage(); y = 15; }
+                doc.setFontSize(13);
+                doc.setTextColor(0, 86, 179);
+                doc.text('Gráfico Comparativo', 14, y);
+                y += 6;
+                try {
+                    const imgData = canvas.toDataURL('image/png');
+                    doc.addImage(imgData, 'PNG', 14, y, 180, 80);
+                } catch (e) { /* se falhar, segue sem o gráfico */ }
+            }
+
+            const nome = 'relatorio_' + meses[0] + (meses.length > 1 ? '_a_' + meses[meses.length - 1] : '') + '.pdf';
+            const blob = doc.output('blob');
+            salvarArquivo(blob, nome, 'application/pdf');
+        } catch (e) {
+            mostrarMensagem('Erro ao gerar o PDF: ' + e.message + '\n\nTire print e envie pro suporte. Use "Ver texto do relatório" abaixo como alternativa.');
         }
-
-        const nome = 'relatorio_' + meses[0] + (meses.length > 1 ? '_a_' + meses[meses.length - 1] : '') + '.pdf';
-        const blob = doc.output('blob');
-        salvarArquivo(blob, nome, 'application/pdf');
     }
 
     // ---------- Salvamento em cascata: Web Share -> download <a> -> nova aba ----------
@@ -859,41 +876,37 @@ select[multiple] { height: auto; }
     }
 
     async function salvarArquivo(blob, nomeArquivo, mimeType) {
-        const diagnostico = [];
-
-        // Tentativa 1: ponte nativa do app — grava direto na pasta Downloads
-        // do aparelho via MediaStore, sem depender do WebView reconhecer
-        // download nenhum. Só existe dentro do app instalado de verdade.
+        // Ponte nativa do app — grava direto na pasta Downloads do aparelho
+        // via MediaStore. Isolado dos outros métodos de propósito: mostra
+        // o resultado exato dela e para aqui, pra não gerar ambiguidade
+        // sobre qual etapa funcionou ou falhou.
         if (typeof AndroidFileSaver !== 'undefined') {
+            let resultado;
             try {
                 const base64 = await blobParaBase64(blob);
-                const salvou = AndroidFileSaver.salvarArquivo(nomeArquivo, mimeType, base64);
-                if (salvou) {
-                    alert('Salvo na pasta Downloads do aparelho: ' + nomeArquivo);
-                    return;
-                }
-                diagnostico.push('Ponte nativa (AndroidFileSaver): chamou e retornou FALHA.');
+                resultado = AndroidFileSaver.salvarArquivo(nomeArquivo, mimeType, base64);
             } catch (e) {
-                diagnostico.push('Ponte nativa (AndroidFileSaver): erro — ' + e.message);
+                resultado = 'ERRO_JS: ' + e.message;
             }
-        } else {
-            diagnostico.push('Ponte nativa (AndroidFileSaver): não existe neste contexto (normal se estiver testando fora do app instalado).');
+
+            if (resultado === true) {
+                mostrarMensagem('✅ SALVOU\n\nArquivo: ' + nomeArquivo + '\nPasta: Downloads do aparelho');
+            } else {
+                mostrarMensagem('❌ A GRAVAÇÃO NATIVA FALHOU\n\nArquivo: ' + nomeArquivo + '\nResultado retornado: ' + JSON.stringify(resultado) + '\n\nTire print desta mensagem exata e envie pro suporte.');
+            }
+            return;
         }
 
-        // Tentativa 2: Web Share nativo (útil testando fora do app real, ex:
-        // navegador comum, onde a ponte acima não existe)
+        // Só chega aqui se a ponte nativa não existir (ex: testando fora do
+        // app instalado, direto no navegador).
         try {
             const arquivo = new File([blob], nomeArquivo, { type: mimeType });
             if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
                 await navigator.share({ files: [arquivo], title: nomeArquivo });
                 return;
             }
-            diagnostico.push('Web Share: não suportado ou recusado pelo aparelho.');
-        } catch (e) {
-            diagnostico.push('Web Share: erro — ' + e.message);
-        }
+        } catch (e) { /* segue pro próximo método */ }
 
-        // Tentativa 3: download clássico via <a download>
         try {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -903,22 +916,9 @@ select[multiple] { height: auto; }
             a.click();
             document.body.removeChild(a);
             setTimeout(() => URL.revokeObjectURL(url), 8000);
-            diagnostico.push('Download via <a>: tentado (não há como confirmar se realmente baixou a partir daqui).');
         } catch (e) {
-            diagnostico.push('Download via <a>: erro — ' + e.message);
+            mostrarMensagem('Não foi possível salvar automaticamente (ponte nativa indisponível, fora do app). Use "Ver texto do relatório" para copiar manualmente.');
         }
-
-        // Tentativa 4: abrir como Data URI numa nova aba (o visualizador padrão do
-        // Android pode oferecer a opção de salvar a partir daí)
-        try {
-            const reader = new FileReader();
-            reader.onload = function () { window.open(reader.result, '_blank'); };
-            reader.readAsDataURL(blob);
-        } catch (e) {
-            diagnostico.push('Nova aba: erro — ' + e.message);
-        }
-
-        alert('Não foi possível confirmar o salvamento automático. Use "Ver texto do relatório" para copiar manualmente.\n\nDetalhes técnicos (tire print e envie pro suporte):\n' + diagnostico.join('\n'));
     }
 
     // ==================================================================
@@ -953,14 +953,14 @@ select[multiple] { height: auto; }
         if (!arquivo) return;
         const reader = new FileReader();
         reader.onload = function (e) { processarTextoBackup(e.target.result); };
-        reader.onerror = function () { alert('Não foi possível ler o arquivo selecionado.'); };
+        reader.onerror = function () { mostrarMensagem('Não foi possível ler o arquivo selecionado.'); };
         reader.readAsText(arquivo);
     }
 
     function carregarBackupDeTexto() {
         const texto = document.getElementById('textoImportar').value.trim();
         if (!texto) {
-            alert('Cole o conteúdo do backup no campo de texto antes de carregar.');
+            mostrarMensagem('Cole o conteúdo do backup no campo de texto antes de carregar.');
             return;
         }
         processarTextoBackup(texto);
@@ -973,11 +973,11 @@ select[multiple] { height: auto; }
         try {
             dados = JSON.parse(texto);
         } catch (e) {
-            alert('Isso não é um backup válido: o texto não é um JSON reconhecível. Confira se copiou o conteúdo inteiro.');
+            mostrarMensagem('Isso não é um backup válido: o texto não é um JSON reconhecível. Confira se copiou o conteúdo inteiro.');
             return;
         }
         if (!dados || !Array.isArray(dados.logs) || !Array.isArray(dados.bancoDados)) {
-            alert('Este arquivo/texto não parece ser um backup deste app (faltam os campos "logs" ou "bancoDados").');
+            mostrarMensagem('Este arquivo/texto não parece ser um backup deste app (faltam os campos "logs" ou "bancoDados").');
             return;
         }
         backupCarregado = dados;
@@ -1034,7 +1034,7 @@ select[multiple] { height: auto; }
 
         tentarSincronizar();
 
-        alert('Dados restaurados com sucesso!');
+        mostrarMensagem('Dados restaurados com sucesso!');
     }
 
     // ==================================================================
@@ -1353,30 +1353,30 @@ select[multiple] { height: auto; }
     async function handleEntrarGate() {
         const email = document.getElementById('gateEmail').value.trim();
         const senha = document.getElementById('gateSenha').value;
-        if (!email || !senha) { alert('Preencha e-mail e senha.'); return; }
+        if (!email || !senha) { mostrarMensagem('Preencha e-mail e senha.'); return; }
         try {
             await entrarConta(email, senha);
             esconderTelaLoginObrigatorio();
             atualizarTelaConta();
             tentarSincronizar();
-        } catch (e) { alert(e.message); }
+        } catch (e) { mostrarMensagem(e.message); }
     }
 
     async function handleCadastrarGate() {
         const email = document.getElementById('gateEmail').value.trim();
         const senha = document.getElementById('gateSenha').value;
-        if (!email || !senha) { alert('Preencha e-mail e senha.'); return; }
-        if (senha.length < 6) { alert('A senha precisa ter pelo menos 6 caracteres.'); return; }
+        if (!email || !senha) { mostrarMensagem('Preencha e-mail e senha.'); return; }
+        if (senha.length < 6) { mostrarMensagem('A senha precisa ter pelo menos 6 caracteres.'); return; }
         try {
             const r = await cadastrarConta(email, senha);
             if (!r.access_token) {
-                alert('Conta criada! Verifique seu e-mail para confirmar antes de entrar (depende da configuração do projeto Supabase).');
+                mostrarMensagem('Conta criada! Verifique seu e-mail para confirmar antes de entrar (depende da configuração do projeto Supabase).');
             } else {
                 esconderTelaLoginObrigatorio();
                 atualizarTelaConta();
                 tentarSincronizar();
             }
-        } catch (e) { alert(e.message); }
+        } catch (e) { mostrarMensagem(e.message); }
     }
 
     function handleEntrarComDigitalGate() {
@@ -1389,7 +1389,7 @@ select[multiple] { height: auto; }
                     atualizarTelaConta();
                     tentarSincronizar();
                 } catch (e) {
-                    alert('Não foi possível ler a sessão salva. Entre manualmente com e-mail e senha.');
+                    mostrarMensagem('Não foi possível ler a sessão salva. Entre manualmente com e-mail e senha.');
                 }
             }
         };
@@ -1399,28 +1399,28 @@ select[multiple] { height: auto; }
     async function handleEntrarConta() {
         const email = document.getElementById('contaEmail').value.trim();
         const senha = document.getElementById('contaSenha').value;
-        if (!email || !senha) { alert('Preencha e-mail e senha.'); return; }
+        if (!email || !senha) { mostrarMensagem('Preencha e-mail e senha.'); return; }
         try {
             await entrarConta(email, senha);
             atualizarTelaConta();
             tentarSincronizar();
-        } catch (e) { alert(e.message); }
+        } catch (e) { mostrarMensagem(e.message); }
     }
 
     async function handleCadastrarConta() {
         const email = document.getElementById('contaEmail').value.trim();
         const senha = document.getElementById('contaSenha').value;
-        if (!email || !senha) { alert('Preencha e-mail e senha.'); return; }
-        if (senha.length < 6) { alert('A senha precisa ter pelo menos 6 caracteres.'); return; }
+        if (!email || !senha) { mostrarMensagem('Preencha e-mail e senha.'); return; }
+        if (senha.length < 6) { mostrarMensagem('A senha precisa ter pelo menos 6 caracteres.'); return; }
         try {
             const r = await cadastrarConta(email, senha);
             if (!r.access_token) {
-                alert('Conta criada! Verifique seu e-mail para confirmar antes de entrar (depende da configuração do projeto Supabase).');
+                mostrarMensagem('Conta criada! Verifique seu e-mail para confirmar antes de entrar (depende da configuração do projeto Supabase).');
             } else {
                 atualizarTelaConta();
                 tentarSincronizar();
             }
-        } catch (e) { alert(e.message); }
+        } catch (e) { mostrarMensagem(e.message); }
     }
 
     function biometriaDisponivelNoApp() {
@@ -1440,7 +1440,7 @@ select[multiple] { height: auto; }
                     atualizarTelaConta();
                     tentarSincronizar();
                 } catch (e) {
-                    alert('Não foi possível ler a sessão salva. Entre manualmente com e-mail e senha.');
+                    mostrarMensagem('Não foi possível ler a sessão salva. Entre manualmente com e-mail e senha.');
                 }
             }
             // se cancelou ou falhou, não faz nada — a tela de login continua ali
@@ -1452,7 +1452,7 @@ select[multiple] { height: auto; }
         const sessao = getSessao();
         if (!sessao) return;
         const ok = AndroidBiometric.salvarSessaoSegura(JSON.stringify(sessao));
-        alert(ok
+        mostrarMensagem(ok
             ? 'Login por digital ativado! Da próxima vez você pode entrar sem digitar a senha.'
             : 'Não foi possível ativar — confira se há digital cadastrada nas configurações do aparelho.');
         atualizarTelaConta();
@@ -1516,22 +1516,22 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.4.1';
+    const APP_VERSAO_ATUAL = '1.4.4';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
         // A ponte AndroidUpdater só existe dentro do app instalado de verdade
         // (não existe testando aqui no navegador/preview).
         if (typeof AndroidUpdater === 'undefined') {
-            if (manual) alert('Verificação de atualização só funciona dentro do app instalado, não no navegador.');
+            if (manual) mostrarMensagem('Verificação de atualização só funciona dentro do app instalado, não no navegador.');
             return;
         }
         if (!navigator.onLine) {
-            if (manual) alert('Sem internet agora — tente de novo com conexão.');
+            if (manual) mostrarMensagem('Sem internet agora — tente de novo com conexão.');
             return;
         }
         if (URL_MANIFESTO_ATUALIZACAO.includes('SEU-APP')) {
-            if (manual) alert('Atualização automática ainda não configurada neste app.');
+            if (manual) mostrarMensagem('Atualização automática ainda não configurada neste app.');
             return;
         }
 
@@ -1540,20 +1540,20 @@ select[multiple] { height: auto; }
         try {
             const respManifesto = await fetch(URL_MANIFESTO_ATUALIZACAO, { cache: 'no-store' });
             if (!respManifesto.ok) {
-                if (manual) alert('Não foi possível checar agora (site fora do ar?).');
+                if (manual) mostrarMensagem('Não foi possível checar agora (site fora do ar?).');
                 atualizarIndicadorVersao();
                 return;
             }
             const manifesto = await respManifesto.json();
 
             if (!manifesto.versao || manifesto.versao === APP_VERSAO_ATUAL) {
-                if (manual) alert('Você já está na versão mais recente (v' + APP_VERSAO_ATUAL + ').');
+                if (manual) mostrarMensagem('Você já está na versão mais recente (v' + APP_VERSAO_ATUAL + ').');
                 atualizarIndicadorVersao();
                 return;
             }
 
             if (localStorage.getItem('atualizacao_ja_baixada_versao') === manifesto.versao) {
-                if (manual) alert('Versão ' + manifesto.versao + ' já baixada — feche e abra o app de novo pra aplicar.');
+                if (manual) mostrarMensagem('Versão ' + manifesto.versao + ' já baixada — feche e abra o app de novo pra aplicar.');
                 atualizarIndicadorVersao();
                 return;
             }
@@ -1561,14 +1561,14 @@ select[multiple] { height: auto; }
             const urlHtml = manifesto.url || URL_MANIFESTO_ATUALIZACAO.replace('version.json', 'index.html');
             const respHtml = await fetch(urlHtml, { cache: 'no-store' });
             if (!respHtml.ok) {
-                if (manual) alert('Achou versão nova, mas falhou ao baixar. Tenta de novo.');
+                if (manual) mostrarMensagem('Achou versão nova, mas falhou ao baixar. Tenta de novo.');
                 atualizarIndicadorVersao();
                 return;
             }
             const htmlNovo = await respHtml.text();
 
             if (htmlNovo.length < 1000) {
-                if (manual) alert('Resposta do servidor parece inválida — não foi salva.');
+                if (manual) mostrarMensagem('Resposta do servidor parece inválida — não foi salva.');
                 atualizarIndicadorVersao();
                 return;
             }
@@ -1578,12 +1578,12 @@ select[multiple] { height: auto; }
                 localStorage.setItem('atualizacao_ja_baixada_versao', manifesto.versao);
                 mostrarAvisoAtualizacao(manifesto.versao);
             } else if (manual) {
-                alert('Achou versão nova, mas não conseguiu salvar no aparelho.');
+                mostrarMensagem('Achou versão nova, mas não conseguiu salvar no aparelho.');
             }
             atualizarIndicadorVersao();
         } catch (e) {
             console.warn('Falha ao checar atualização:', e.message);
-            if (manual) alert('Erro ao checar atualização: ' + e.message);
+            if (manual) mostrarMensagem('Erro ao checar atualização: ' + e.message);
             atualizarIndicadorVersao();
         }
     }
@@ -1636,6 +1636,13 @@ select[multiple] { height: auto; }
             <button type="button" onclick="modalConfirmacaoResponder(true)">Confirmar</button>
             <button type="button" class="btn-secundario" onclick="modalConfirmacaoResponder(false)">Cancelar</button>
         </div>
+    </div>
+</div>
+
+<div id="modalMensagem" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10001; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#fff; border-radius:10px; padding:20px; max-width:340px; width:100%; max-height:80vh; overflow-y:auto; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+        <p id="modalMensagemTexto" style="margin:0 0 16px; font-size:0.9rem; line-height:1.4; white-space:pre-wrap;"></p>
+        <button type="button" onclick="document.getElementById('modalMensagem').classList.remove('aberto')">OK</button>
     </div>
 </div>
 <script>
