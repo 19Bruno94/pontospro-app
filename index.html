@@ -51,7 +51,6 @@ select[multiple] { height: auto; }
 
 <header style="position: sticky; top: 0; z-index: 100;">
     <span id="app-title">Produção Diária</span>
-    <span id="indicadorVersao" onclick="verificarAtualizacaoManual()" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); font-size:0.65rem; font-weight:normal; opacity:0.85; cursor:pointer; white-space:nowrap;">v··· 🔄</span>
 </header>
 
 <div class="container">
@@ -239,6 +238,12 @@ select[multiple] { height: auto; }
             <h3>Conta e Sincronização na Nuvem</h3><br>
             <p style="font-size:0.85rem; color:#555;">O app funciona 100% offline sempre. Ao entrar numa conta, os dados também são guardados na nuvem e sincronizados automaticamente entre seus aparelhos quando houver internet.</p>
             <div id="areaConta"><p style="color:#666;">Carregando...</p></div>
+        </div>
+
+        <div class="card">
+            <h3>Versão do App</h3><br>
+            <p id="indicadorVersao" style="font-size:0.9rem; color:#555;">v···</p>
+            <button type="button" class="btn-secundario" onclick="verificarAtualizacaoManual()">🔄 Verificar Atualização</button>
         </div>
     </div>
 </div>
@@ -1543,7 +1548,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.4.7';
+    const APP_VERSAO_ATUAL = '1.4.8';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
@@ -1622,7 +1627,7 @@ select[multiple] { height: auto; }
     function atualizarIndicadorVersao(textoTemporario) {
         const el = document.getElementById('indicadorVersao');
         if (!el) return;
-        el.innerHTML = textoTemporario ? textoTemporario : `v${APP_VERSAO_ATUAL} 🔄`;
+        el.innerHTML = textoTemporario ? textoTemporario : `v${APP_VERSAO_ATUAL}`;
     }
 
     function mostrarAvisoAtualizacao(versao) {
