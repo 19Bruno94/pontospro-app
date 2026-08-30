@@ -882,17 +882,20 @@ select[multiple] { height: auto; }
         // sobre qual etapa funcionou ou falhou.
         if (typeof AndroidFileSaver !== 'undefined') {
             let resultado;
+            let base64 = '';
             try {
-                const base64 = await blobParaBase64(blob);
+                base64 = await blobParaBase64(blob);
                 resultado = AndroidFileSaver.salvarArquivo(nomeArquivo, mimeType, base64);
             } catch (e) {
                 resultado = 'ERRO_JS: ' + e.message;
             }
 
+            const tamanhoInfo = 'Tamanho do arquivo: ' + (blob.size / 1024).toFixed(0) + ' KB (' + blob.size + ' bytes)\nTamanho em base64: ' + (base64.length / 1024).toFixed(0) + ' KB (' + base64.length + ' caracteres)';
+
             if (resultado === true) {
-                mostrarMensagem('✅ SALVOU\n\nArquivo: ' + nomeArquivo + '\nPasta: Downloads do aparelho');
+                mostrarMensagem('✅ SALVOU\n\nArquivo: ' + nomeArquivo + '\nPasta: Downloads do aparelho\n' + tamanhoInfo);
             } else {
-                mostrarMensagem('❌ A GRAVAÇÃO NATIVA FALHOU\n\nArquivo: ' + nomeArquivo + '\nResultado retornado: ' + JSON.stringify(resultado) + '\n\nTire print desta mensagem exata e envie pro suporte.');
+                mostrarMensagem('❌ A GRAVAÇÃO NATIVA FALHOU\n\nArquivo: ' + nomeArquivo + '\nResultado retornado: ' + JSON.stringify(resultado) + '\n' + tamanhoInfo + '\n\nTire print desta mensagem exata e envie pro suporte.');
             }
             return;
         }
@@ -1516,7 +1519,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.4.4';
+    const APP_VERSAO_ATUAL = '1.4.5';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
