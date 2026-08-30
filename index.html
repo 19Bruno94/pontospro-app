@@ -313,6 +313,15 @@ select[multiple] { height: auto; }
     let desbloqueadoNestaSessao = false;
 
     let ultimoIdGerado = 0;
+    // Sufixo de hora único pra nomes de arquivo — evita reusar exatamente o
+    // mesmo nome em exportações repetidas (o que pode esbarrar num registro
+    // do Android deixado por uma tentativa anterior que falhou no meio).
+    function sufixoHoraUnico() {
+        const d = new Date();
+        const p = n => String(n).padStart(2, '0');
+        return p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+    }
+
     function gerarId() {
         // Faixa aleatória 1000x maior que antes (reduz colisão entre
         // aparelhos diferentes), mais um contador estritamente crescente
@@ -774,7 +783,7 @@ select[multiple] { height: auto; }
             const conteudo = gerarConteudoCSV(dados);
             document.getElementById('textoFallback').value = conteudo;
             const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
-            const nome = 'producao_' + meses[0] + (meses.length > 1 ? '_a_' + meses[meses.length - 1] : '') + '.csv';
+            const nome = 'producao_' + meses[0] + (meses.length > 1 ? '_a_' + meses[meses.length - 1] : '') + '_' + sufixoHoraUnico() + '.csv';
             salvarArquivo(blob, nome, 'text/csv');
         } catch (e) {
             mostrarMensagem('Erro ao gerar a planilha: ' + e.message + '\n\nTire print e envie pro suporte.');
@@ -872,7 +881,7 @@ select[multiple] { height: auto; }
                 } catch (e) { /* se falhar, segue sem o gráfico */ }
             }
 
-            const nome = 'relatorio_' + meses[0] + (meses.length > 1 ? '_a_' + meses[meses.length - 1] : '') + '.pdf';
+            const nome = 'relatorio_' + meses[0] + (meses.length > 1 ? '_a_' + meses[meses.length - 1] : '') + '_' + sufixoHoraUnico() + '.pdf';
             const blob = doc.output('blob');
             salvarArquivo(blob, nome, 'application/pdf');
         } catch (e) {
@@ -962,7 +971,7 @@ select[multiple] { height: auto; }
         // dependendo de como o app foi empacotado — mas o texto acima já
         // garante que os dados não se percam de qualquer forma).
         const blob = new Blob([conteudo], { type: 'application/json' });
-        const nome = 'backup_producao_' + new Date().toISOString().slice(0, 10) + '.json';
+        const nome = 'backup_producao_' + new Date().toISOString().slice(0, 10) + '_' + sufixoHoraUnico() + '.json';
         salvarArquivo(blob, nome, 'application/json');
     }
 
@@ -1534,7 +1543,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.4.6';
+    const APP_VERSAO_ATUAL = '1.4.7';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
