@@ -852,8 +852,23 @@ select[multiple] { height: auto; }
                 doc.text('Gráfico Comparativo', 14, y);
                 y += 6;
                 try {
-                    const imgData = canvas.toDataURL('image/png');
-                    doc.addImage(imgData, 'PNG', 14, y, 180, 80);
+                    // Redesenha numa tela temporária pequena e fixa antes de
+                    // embutir — o canvas na tela pode estar numa resolução
+                    // bem maior (ajuste de nitidez pra telas de alta
+                    // densidade), o que gerava PDFs de vários MB e travava
+                    // a ponte nativa. JPEG comprimido também ajuda bastante
+                    // (imagem de gráfico com anti-serrilhado não comprime
+                    // bem em PNG sem perdas).
+                    const larguraEmbed = 800, alturaEmbed = 360;
+                    const canvasEmbed = document.createElement('canvas');
+                    canvasEmbed.width = larguraEmbed;
+                    canvasEmbed.height = alturaEmbed;
+                    const ctxEmbed = canvasEmbed.getContext('2d');
+                    ctxEmbed.fillStyle = '#ffffff';
+                    ctxEmbed.fillRect(0, 0, larguraEmbed, alturaEmbed);
+                    ctxEmbed.drawImage(canvas, 0, 0, larguraEmbed, alturaEmbed);
+                    const imgData = canvasEmbed.toDataURL('image/jpeg', 0.75);
+                    doc.addImage(imgData, 'JPEG', 14, y, 180, 80);
                 } catch (e) { /* se falhar, segue sem o gráfico */ }
             }
 
@@ -1519,7 +1534,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.4.5';
+    const APP_VERSAO_ATUAL = '1.4.6';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
