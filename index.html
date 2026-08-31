@@ -1307,21 +1307,33 @@ select[multiple] { height: auto; }
     // esses padrões de novo na nuvem.
     function reconciliarServicosPorNome() {
         let mudou = false;
-        bancoDados.forEach(local => {
-            if (local.synced || local.deletado) return;
-            const nomeNormalizado = local.nome.trim().toUpperCase();
-            const jaExisteNaNuvem = bancoDados.some(outro =>
-                outro !== local &&
-                outro.synced &&
-                !outro.deletado &&
-                outro.nome.trim().toUpperCase() === nomeNormalizado
-            );
-            if (jaExisteNaNuvem) {
-                local.deletado = true;
-                local.synced = true; // não precisa mais subir — já era só um duplicado local
-                mudou = true;
-            }
+
+        // Agrupa por nome (só os ativos) — não importa se já estava
+        // sincronizado antes ou não, cobre duplicatas de qualquer origem
+        // (instalação nova, dados antigos de antes dessa correção existir,
+        // testes em aparelhos diferentes, etc.)
+        const porNome = {};
+        bancoDados.forEach(item => {
+            if (item.deletado) return;
+            const chave = item.nome.trim().toUpperCase();
+            if (!porNome[chave]) porNome[chave] = [];
+            porNome[chave].push(item);
         });
+
+        Object.values(porNome).forEach(grupo => {
+            if (grupo.length <= 1) return;
+            // Mantém só o mais recente de cada grupo; apaga os outros e
+            // marca como não sincronizado pra propagar essa exclusão
+            // também pra nuvem e pros outros aparelhos.
+            grupo.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+            grupo.slice(1).forEach(duplicado => {
+                duplicado.deletado = true;
+                duplicado.synced = false;
+                duplicado.updatedAt = Date.now();
+                mudou = true;
+            });
+        });
+
         if (mudou) salvarLocal();
     }
 
@@ -1548,7 +1560,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.4.8';
+    const APP_VERSAO_ATUAL = '1.4.10';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
