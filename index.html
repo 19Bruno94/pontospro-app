@@ -859,17 +859,23 @@ select[multiple] { height: auto; }
                 y += 8;
 
                 d.logs.forEach(l => {
-                    if (y > 280) {
+                    doc.setFontSize(8);
+                    // Quebra o texto da observação em várias linhas, em vez de
+                    // cortar no meio da palavra — a coluna tem ~30mm de largura
+                    // disponível (de x=164 até a borda direita da tabela).
+                    const linhasObs = doc.splitTextToSize((l.obs || ''), 30);
+                    const alturaLinha = Math.max(5, linhasObs.length * 3.6);
+
+                    if (y + alturaLinha > 280) {
                         doc.addPage();
                         y = 15;
                     }
-                    doc.setFontSize(8);
                     doc.text(l.data.split('-').reverse().join('/'), 16, y);
                     doc.text((l.atividade || '').substring(0, 42), 42, y);
                     doc.text(l.tec || '', 132, y);
                     doc.text(String(l.pontos), 150, y);
-                    doc.text((l.obs || '').substring(0, 16), 164, y);
-                    y += 5;
+                    doc.text(linhasObs, 164, y);
+                    y += alturaLinha;
                 });
                 y += 8;
             });
@@ -1606,7 +1612,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.5.0';
+    const APP_VERSAO_ATUAL = '1.5.1';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
@@ -1735,6 +1741,7 @@ select[multiple] { height: auto; }
         <button type="button" onclick="document.getElementById('modalMensagem').classList.remove('aberto')">OK</button>
     </div>
 </div>
+
 
 <script>
 /** @license
