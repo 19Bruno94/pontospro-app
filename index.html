@@ -1204,6 +1204,98 @@ select[multiple] { height: auto; }
         return dados;
     }
 
+    // URL usada como destino do link de redefinição de senha no e-mail —
+    // tem que ser uma URL de verdade, alcançável de qualquer navegador, por
+    // isso usa o GitHub Pages (a mesma página que já serve o app). Também
+    // precisa estar cadastrada em Authentication > URL Configuration >
+    // Redirect URLs no painel do Supabase, senão ele ignora e usa a URL
+    // padrão (geralmente localhost, que não funciona pra ninguém).
+    const URL_REDIRECIONAMENTO_SENHA = 'https://19bruno94.github.io/pontospro-app/';
+
+    async function solicitarResetSenha(email) {
+        const r = await fetch(`${SUPABASE_URL}/auth/v1/recover?redirect_to=${encodeURIComponent(URL_REDIRECIONAMENTO_SENHA)}`, {
+            method: 'POST',
+            headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        if (!r.ok) {
+            const erro = await r.json().catch(() => ({}));
+            throw new Error(erro.msg || erro.error_description || 'Não foi possível enviar o e-mail de redefinição.');
+        }
+    }
+
+    async function definirNovaSenha(tokenRecuperacao, novaSenha) {
+        const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            method: 'PUT',
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${tokenRecuperacao}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ password: novaSenha })
+        });
+        const dados = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(dados.msg || dados.error_description || 'Não foi possível alterar a senha.');
+        return dados;
+    }
+
+    // Verifica, ao abrir a página, se ela foi aberta a partir do link de
+    // e-mail de redefinição de senha (o Supabase manda o token numa parte
+    // especial da URL, depois de "#"). Se for o caso, mostra a tela de
+    // definir nova senha em vez do app normal.
+    function verificarModoRecuperacaoSenha() {
+        const hash = window.location.hash;
+        if (hash && hash.includes('type=recovery') && hash.includes('access_token=')) {
+            const params = new URLSearchParams(hash.substring(1));
+            const token = params.get('access_token');
+            if (token) {
+                window._tokenRecuperacaoSenha = token;
+                document.getElementById('telaNovaSenha').style.display = 'block';
+                return true;
+            }
+        }
+        return false;
+    }
+
+    async function handleDefinirNovaSenha() {
+        const novaSenha = document.getElementById('novaSenhaInput').value;
+        const confirmar = document.getElementById('confirmarSenhaInput').value;
+        if (novaSenha.length < 6) { mostrarMensagem('A senha precisa ter pelo menos 6 caracteres.'); return; }
+        if (novaSenha !== confirmar) { mostrarMensagem('As senhas digitadas não coincidem.'); return; }
+        try {
+            await definirNovaSenha(window._tokenRecuperacaoSenha, novaSenha);
+            document.getElementById('telaNovaSenha').style.display = 'none';
+            history.replaceState(null, '', window.location.pathname);
+            mostrarMensagem('Senha alterada com sucesso! Pode fechar esta página e entrar no app com a nova senha.');
+        } catch (e) {
+            mostrarMensagem(e.message);
+        }
+    }
+
+    async function handleEsqueciSenhaGate() {
+        const email = document.getElementById('gateEmail').value.trim();
+        if (!email) { mostrarMensagem('Digite seu e-mail no campo acima primeiro, depois toque em "Esqueci minha senha".'); return; }
+        confirmarAcao('Enviar e-mail de redefinição de senha para ' + email + '?', async (ok) => {
+            if (!ok) return;
+            try {
+                await solicitarResetSenha(email);
+                mostrarMensagem('E-mail enviado! Verifique sua caixa de entrada (e o spam) e toque no link pra definir uma nova senha.');
+            } catch (e) { mostrarMensagem(e.message); }
+        });
+    }
+
+    async function handleEsqueciSenhaConta() {
+        const email = document.getElementById('contaEmail').value.trim();
+        if (!email) { mostrarMensagem('Digite seu e-mail no campo acima primeiro, depois toque em "Esqueci minha senha".'); return; }
+        confirmarAcao('Enviar e-mail de redefinição de senha para ' + email + '?', async (ok) => {
+            if (!ok) return;
+            try {
+                await solicitarResetSenha(email);
+                mostrarMensagem('E-mail enviado! Verifique sua caixa de entrada (e o spam) e toque no link pra definir uma nova senha.');
+            } catch (e) { mostrarMensagem(e.message); }
+        });
+    }
+
     function sairConta() {
         confirmarAcao('Sair da conta? Os dados já sincronizados continuam guardados na nuvem, e os locais permanecem neste aparelho.', (ok) => {
             if (!ok) return;
@@ -1423,6 +1515,11 @@ select[multiple] { height: auto; }
     // ---------- Tela "Conta" ----------
     // ---------- Tela de login obrigatória (bloqueia o app até logar) ----------
     function mostrarTelaLoginObrigatorio() {
+        // Guarda contra o Kotlin chamar isso de novo no onResume() — o que
+        // sempre acontece ao voltar do navegador externo depois do login
+        // com Google. Sem essa checagem, a tela de bloqueio reaparecia por
+        // cima bem depois de um login com Google que já tinha dado certo.
+        if (desbloqueadoNestaSessao) return;
         document.getElementById('telaLoginObrigatorio').style.display = 'block';
         renderizarLoginObrigatorio();
     }
@@ -1437,13 +1534,55 @@ select[multiple] { height: auto; }
         const area = document.getElementById('areaLoginObrigatorio');
         // Login por digital temporariamente fora da tela de bloqueio —
         // volta depois que o fluxo de e-mail/senha estiver 100% confirmado.
+        const temGoogleDisponivel = typeof AndroidGoogleAuth !== 'undefined' && typeof AndroidGoogleAuth.entrarComGoogle === 'function';
         area.innerHTML = `
+            ${temGoogleDisponivel ? `
+                <button type="button" class="btn-secundario" onclick="handleEntrarComGoogleGate()">🔵 Entrar com Google</button>
+                <p style="text-align:center; font-size:0.8rem; color:#888; margin:10px 0;">ou entre com e-mail e senha:</p>
+            ` : ''}
             <div class="form-group"><label>E-mail:</label><input type="email" id="gateEmail"></div>
             <div class="form-group"><label>Senha:</label><input type="password" id="gateSenha"></div>
             <div class="btn-linha">
                 <button type="button" onclick="handleEntrarGate()">Entrar</button>
                 <button type="button" class="btn-secundario" onclick="handleCadastrarGate()">Criar Conta</button>
-            </div>`;
+            </div>
+            <p style="text-align:center; margin-top:10px;"><a href="#" onclick="handleEsqueciSenhaGate(); return false;" style="color:#0056b3; font-size:0.85rem;">Esqueci minha senha</a></p>`;
+    }
+
+    // Decodifica o "payload" (parte do meio) de um JWT, sem verificar
+    // assinatura — só pra ler user_id/e-mail. Confiamos no token porque ele
+    // veio direto do Supabase pela ponte nativa, não de fonte externa.
+    function decodificarPayloadJwt(token) {
+        const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        return JSON.parse(atob(base64));
+    }
+
+    function processarLoginGoogle(accessToken, refreshToken, expiresIn) {
+        try {
+            const payload = decodificarPayloadJwt(accessToken);
+            salvarSessao({
+                access_token: accessToken, refresh_token: refreshToken,
+                user_id: payload.sub, email: payload.email,
+                expira_em: Date.now() + (parseInt(expiresIn || '3600', 10) * 1000)
+            });
+            esconderTelaLoginObrigatorio();
+            atualizarTelaConta();
+            tentarSincronizar();
+        } catch (e) {
+            mostrarMensagem('Erro ao processar login do Google: ' + e.message);
+        }
+    }
+
+    function handleEntrarComGoogleGate() {
+        window.receberResultadoLoginGoogle = processarLoginGoogle;
+        window.receberErroLoginGoogle = (msg) => mostrarMensagem('Erro no login com Google: ' + msg);
+        AndroidGoogleAuth.entrarComGoogle(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
+    function handleEntrarComGoogleConta() {
+        window.receberResultadoLoginGoogle = processarLoginGoogle;
+        window.receberErroLoginGoogle = (msg) => mostrarMensagem('Erro no login com Google: ' + msg);
+        AndroidGoogleAuth.entrarComGoogle(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
 
     async function handleEntrarGate() {
@@ -1573,13 +1712,19 @@ select[multiple] { height: auto; }
 
         const sessao = getSessao();
         if (!sessao) {
+            const temGoogleDisponivel = typeof AndroidGoogleAuth !== 'undefined' && typeof AndroidGoogleAuth.entrarComGoogle === 'function';
             area.innerHTML = `
+                ${temGoogleDisponivel ? `
+                    <button type="button" class="btn-secundario" onclick="handleEntrarComGoogleConta()">🔵 Entrar com Google</button>
+                    <p style="text-align:center; font-size:0.8rem; color:#888; margin:10px 0;">ou entre com e-mail e senha:</p>
+                ` : ''}
                 <div class="form-group"><label>E-mail:</label><input type="email" id="contaEmail"></div>
                 <div class="form-group"><label>Senha:</label><input type="password" id="contaSenha"></div>
                 <div class="btn-linha">
                     <button type="button" onclick="handleEntrarConta()">Entrar</button>
                     <button type="button" class="btn-secundario" onclick="handleCadastrarConta()">Criar Conta</button>
                 </div>
+                <p style="text-align:center; margin:8px 0;"><a href="#" onclick="handleEsqueciSenhaConta(); return false;" style="color:#0056b3; font-size:0.85rem;">Esqueci minha senha</a></p>
                 <p class="aviso-salvamento">Sem login, o app continua funcionando normalmente — só não sincroniza com outros aparelhos.</p>`;
         } else {
             const pendentes = logs.filter(l => !l.synced).length + bancoDados.filter(b => !b.synced).length;
@@ -1612,7 +1757,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.5.1';
+    const APP_VERSAO_ATUAL = '1.6.1';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
@@ -1710,9 +1855,13 @@ select[multiple] { height: auto; }
     // Ao abrir o app: se a nuvem estiver configurada, sempre bloqueia até
     // logar de novo (por digital ou e-mail/senha) — mesmo com sessão já
     // salva de antes. A sessão salva continua servindo pra sincronização,
-    // só a TELA exige confirmação a cada abertura.
-    if (sbConfigurado() && !desbloqueadoNestaSessao) {
-        mostrarTelaLoginObrigatorio();
+    // só a TELA exige confirmação a cada abertura. Exceto se a página foi
+    // aberta a partir do link de redefinição de senha — nesse caso, mostra
+    // a tela de nova senha em vez da tela de login.
+    if (!verificarModoRecuperacaoSenha()) {
+        if (sbConfigurado() && !desbloqueadoNestaSessao) {
+            mostrarTelaLoginObrigatorio();
+        }
     }
 </script>
 
@@ -1722,6 +1871,18 @@ select[multiple] { height: auto; }
         <h2 style="text-align:center; color:#0056b3; margin-bottom:4px;">Produção vs Pontuação</h2>
         <p style="text-align:center; color:#666; font-size:0.85rem; margin-bottom:24px;">Entre para continuar</p>
         <div id="areaLoginObrigatorio" class="card"></div>
+    </div>
+</div>
+
+<div id="telaNovaSenha" style="display:none; position:fixed; inset:0; background:#f5f5f5; z-index:9999; overflow-y:auto; padding:24px 16px;">
+    <div style="max-width:400px; margin:60px auto 0;">
+        <h2 style="text-align:center; color:#0056b3; margin-bottom:4px;">Definir Nova Senha</h2>
+        <p style="text-align:center; color:#666; font-size:0.85rem; margin-bottom:24px;">Escolha uma nova senha pra sua conta</p>
+        <div class="card">
+            <div class="form-group"><label>Nova senha:</label><input type="password" id="novaSenhaInput"></div>
+            <div class="form-group"><label>Confirmar nova senha:</label><input type="password" id="confirmarSenhaInput"></div>
+            <button type="button" onclick="handleDefinirNovaSenha()">Salvar Nova Senha</button>
+        </div>
     </div>
 </div>
 
@@ -1741,6 +1902,7 @@ select[multiple] { height: auto; }
         <button type="button" onclick="document.getElementById('modalMensagem').classList.remove('aberto')">OK</button>
     </div>
 </div>
+
 
 
 <script>
