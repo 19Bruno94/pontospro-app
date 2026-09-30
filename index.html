@@ -1757,7 +1757,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.6.1';
+    const APP_VERSAO_ATUAL = '1.6.2';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
@@ -1863,6 +1863,17 @@ select[multiple] { height: auto; }
             mostrarTelaLoginObrigatorio();
         }
     }
+
+    // Cobre o caso de o link do e-mail abrir numa aba que já estava aberta
+    // nesta mesma página (o navegador só troca o "#" da URL sem recarregar
+    // — a checagem acima, que roda uma única vez ao carregar, não pega
+    // isso sozinha). Reage à mudança do "#" e mostra a tela de nova senha
+    // mesmo sem reload.
+    window.addEventListener('hashchange', () => {
+        if (verificarModoRecuperacaoSenha()) {
+            document.getElementById('telaLoginObrigatorio').style.display = 'none';
+        }
+    });
 </script>
 
 
