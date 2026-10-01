@@ -1248,9 +1248,10 @@ select[multiple] { height: auto; }
         if (hash && hash.includes('type=recovery') && hash.includes('access_token=')) {
             const params = new URLSearchParams(hash.substring(1));
             const token = params.get('access_token');
-            if (token) {
+            const tela = document.getElementById('telaNovaSenha');
+            if (token && tela) {
                 window._tokenRecuperacaoSenha = token;
-                document.getElementById('telaNovaSenha').style.display = 'block';
+                tela.style.display = 'block';
                 return true;
             }
         }
@@ -1520,7 +1521,9 @@ select[multiple] { height: auto; }
         // com Google. Sem essa checagem, a tela de bloqueio reaparecia por
         // cima bem depois de um login com Google que já tinha dado certo.
         if (desbloqueadoNestaSessao) return;
-        document.getElementById('telaLoginObrigatorio').style.display = 'block';
+        const tela = document.getElementById('telaLoginObrigatorio');
+        if (!tela) return; // a div ainda não existe no documento (chamada cedo demais)
+        tela.style.display = 'block';
         renderizarLoginObrigatorio();
     }
 
@@ -1757,7 +1760,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.6.2';
+    const APP_VERSAO_ATUAL = '1.6.3';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
@@ -1852,27 +1855,36 @@ select[multiple] { height: auto; }
     verificarAtualizacao();
     window.addEventListener('online', () => verificarAtualizacao());
 
-    // Ao abrir o app: se a nuvem estiver configurada, sempre bloqueia até
-    // logar de novo (por digital ou e-mail/senha) — mesmo com sessão já
-    // salva de antes. A sessão salva continua servindo pra sincronização,
-    // só a TELA exige confirmação a cada abertura. Exceto se a página foi
-    // aberta a partir do link de redefinição de senha — nesse caso, mostra
-    // a tela de nova senha em vez da tela de login.
-    if (!verificarModoRecuperacaoSenha()) {
-        if (sbConfigurado() && !desbloqueadoNestaSessao) {
-            mostrarTelaLoginObrigatorio();
+    // As divs telaLoginObrigatorio / telaNovaSenha ficam mais abaixo no
+    // HTML, DEPOIS deste <script>. Rodar o bloco abaixo direto (sem
+    // esperar) tentaria pegar essas divs antes de existirem no documento —
+    // document.getElementById devolveria null e quebraria silenciosamente,
+    // derrubando o resto da inicialização (foi exatamente isso que fazia a
+    // tela de bloqueio E a de nova senha nunca aparecerem fora do app
+    // nativo). Por isso espera o documento terminar de carregar primeiro.
+    document.addEventListener('DOMContentLoaded', () => {
+        // Ao abrir o app: se a nuvem estiver configurada, sempre bloqueia até
+        // logar de novo (por digital ou e-mail/senha) — mesmo com sessão já
+        // salva de antes. A sessão salva continua servindo pra sincronização,
+        // só a TELA exige confirmação a cada abertura. Exceto se a página foi
+        // aberta a partir do link de redefinição de senha — nesse caso, mostra
+        // a tela de nova senha em vez da tela de login.
+        if (!verificarModoRecuperacaoSenha()) {
+            if (sbConfigurado() && !desbloqueadoNestaSessao) {
+                mostrarTelaLoginObrigatorio();
+            }
         }
-    }
 
-    // Cobre o caso de o link do e-mail abrir numa aba que já estava aberta
-    // nesta mesma página (o navegador só troca o "#" da URL sem recarregar
-    // — a checagem acima, que roda uma única vez ao carregar, não pega
-    // isso sozinha). Reage à mudança do "#" e mostra a tela de nova senha
-    // mesmo sem reload.
-    window.addEventListener('hashchange', () => {
-        if (verificarModoRecuperacaoSenha()) {
-            document.getElementById('telaLoginObrigatorio').style.display = 'none';
-        }
+        // Cobre o caso de o link do e-mail abrir numa aba que já estava aberta
+        // nesta mesma página (o navegador só troca o "#" da URL sem recarregar
+        // — a checagem acima, que roda uma única vez ao carregar, não pega
+        // isso sozinha). Reage à mudança do "#" e mostra a tela de nova senha
+        // mesmo sem reload.
+        window.addEventListener('hashchange', () => {
+            if (verificarModoRecuperacaoSenha()) {
+                document.getElementById('telaLoginObrigatorio').style.display = 'none';
+            }
+        });
     });
 </script>
 
