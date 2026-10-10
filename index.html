@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>App Pontos vs Produção</title>
     <style>
-        :root { --primary: #0056b3; --bg: #f4f7f6; --card: #ffffff; --text: #333; --danger: #dc3545; --success: #28a745; }
+        :root { --primary: #c1440e; --bg: #160f1a; --card: #241a29; --text: #f3e9da; --danger: #b02a37; --success: #2d6b0a; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: var(--bg); color: var(--text); padding-bottom: 70px; }
         header { background: var(--primary); color: white; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; position: sticky; top: 0; z-index: 100; }
@@ -13,35 +13,35 @@
         .card { background: var(--card); padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
         .form-group { margin-bottom: 12px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
-        input, select, button { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 1rem; }
+        input, select, button { width: 100%; padding: 10px; border: 1px solid #6b5a73; border-radius: 5px; font-size: 1rem; }
         button { background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 5px; }
-        button:hover { background: #004494; }
+        button:hover { background: #9a3700; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
-        th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #eee; font-weight: bold; }
-        .nav-bar { position: fixed; bottom: 0; width: 100%; background: white; display: flex; box-shadow: 0 -2px 5px rgba(0,0,0,0.1); z-index: 100; }
-        .nav-btn { flex: 1; padding: 15px 5px; border: none; background: none; color: #666; font-weight: bold; cursor: pointer; font-size: 0.85rem; text-align: center; }
-        .nav-btn.active { color: var(--primary); border-top: 3px solid var(--primary); background: #f8f9fa; }
+        th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #4a3750; }
+        th { background: #3d2d44; font-weight: bold; }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: #1f1624; display: flex; box-shadow: 0 -2px 5px rgba(0,0,0,0.1); z-index: 100; }
+        .nav-btn { flex: 1; padding: 15px 5px; border: none; background: none; color: #b8a8bc; font-weight: bold; cursor: pointer; font-size: 0.85rem; text-align: center; }
+        .nav-btn.active { color: #ff9248; border-top: 3px solid #ff9248; background: #2b1f31; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .dash-card { background: #e9ecef; padding: 15px; border-radius: 8px; text-align: center; }
-        .dash-card h3 { font-size: 1.5rem; color: var(--primary); }
+        .dash-card { background: #2b1f31; padding: 15px; border-radius: 8px; text-align: center; }
+        .dash-card h3 { font-size: 1.5rem; color: #ff9248; }
         .dash-card p { font-size: 0.8rem; font-weight: bold; text-transform: uppercase; }
         .delete-btn { background: var(--danger); padding: 5px; color: white; font-size: 0.8rem; width: auto; display: inline-block; margin: 0; }
-        .badge { background: #eee; padding: 2px 6px; border-radius: 10px; font-size: 0.75rem; font-weight: normal; float: right; }
-        .lista-meses { max-height: 220px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 8px 12px; margin-bottom: 10px; }
-        .lista-meses label { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-weight: normal; border-bottom: 1px solid #f0f0f0; }
+        .badge { background: #33233a; padding: 2px 6px; border-radius: 10px; font-size: 0.75rem; font-weight: normal; float: right; }
+        .lista-meses { max-height: 220px; overflow-y: auto; border: 1px solid #4a3750; border-radius: 5px; padding: 8px 12px; margin-bottom: 10px; }
+        .lista-meses label { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-weight: normal; border-bottom: 1px solid #3a2840; }
         .lista-meses label:last-child { border-bottom: none; }
         .lista-meses input[type="checkbox"] { width: auto; }
-        .btn-secundario { background: #6c757d; }
-        .btn-secundario:hover { background: #565e64; }
+        .btn-secundario { background: #5a4a5f; }
+        .btn-secundario:hover { background: #473a4d; }
         .btn-linha { display: flex; gap: 8px; }
         .btn-linha button { margin-top: 0; }
-        #canvasComparativo { width: 100%; height: 220px; display: block; margin-top: 10px; background: #fff; border-radius: 6px; }
+        #canvasComparativo { width: 100%; height: 220px; display: block; margin-top: 10px; background: #241a29; border-radius: 6px; }
         #areaTextoFallback { margin-top: 10px; }
         #areaTextoFallback textarea { min-height: 140px; font-family: monospace; font-size: 0.75rem; }
-        .aviso-salvamento { font-size: 0.78rem; color: #666; margin-top: 8px; line-height: 1.4; }
+        .aviso-salvamento { font-size: 0.78rem; color: #b8a8bc; margin-top: 8px; line-height: 1.4; }
 select[multiple] { height: auto; }
 #modalConfirmacao.aberto { display: flex !important; }
 #modalMensagem.aberto { display: flex !important; }
@@ -105,9 +105,9 @@ select[multiple] { height: auto; }
                 <div class="dash-card"><h3 id="dashServicos">0</h3><p>Qtd Serviços</p></div>
             </div>
             <br>
-            <div class="dash-card" style="background:#e2f0d9; color:#385723; border: 1px solid #cd3;">
+            <div class="dash-card" style="background:#1a2e12; color:#6fdc1a; border: 1px solid #6fdc1a;">
                 <p>Valor por Ponto: <span id="dashValorPonto" style="font-weight:bold;">R$ 0,00</span></p>
-                <h3 id="dashValor" style="font-size: 2rem; color: #385723; margin-top: 5px;">R$ 0,00</h3>
+                <h3 id="dashValor" style="font-size: 2rem; color: #6fdc1a; margin-top: 5px;">R$ 0,00</h3>
                 <p style="margin-top: 5px;">Valor Final Calculado</p>
             </div>
         </div>
@@ -116,7 +116,7 @@ select[multiple] { height: auto; }
     <div id="tab-servicos" class="tab-content">
         <div class="card">
             <h3>Adicionar ou Alterar Serviço</h3>
-            <p id="avisoModoServico" style="font-size: 0.8rem; color: #666; margin-bottom: 10px;">Para alterar a pontuação de um serviço já existente, use o botão "Editar" na lista abaixo — ou digite o mesmo nome aqui manualmente.</p>
+            <p id="avisoModoServico" style="font-size: 0.8rem; color: #b8a8bc; margin-bottom: 10px;">Para alterar a pontuação de um serviço já existente, use o botão "Editar" na lista abaixo — ou digite o mesmo nome aqui manualmente.</p>
             <form id="formConfigServico">
                 <div class="form-group">
                     <label>Nome da Atividade:</label>
@@ -163,7 +163,7 @@ select[multiple] { height: auto; }
                 <button type="button" class="btn-secundario" onclick="selecionarTodosMeses(true)">Marcar Todos</button>
                 <button type="button" class="btn-secundario" onclick="selecionarTodosMeses(false)">Limpar</button>
             </div>
-            <div id="listaMeses" class="lista-meses"><p style="color:#666;">Nenhum lançamento registado ainda.</p></div>
+            <div id="listaMeses" class="lista-meses"><p style="color:#b8a8bc;">Nenhum lançamento registado ainda.</p></div>
             <div class="form-group">
                 <label>IRR Medido (para valor estimado):</label>
                 <input type="number" id="irrRelatorio" value="1" step="0.001">
@@ -205,7 +205,7 @@ select[multiple] { height: auto; }
 
         <div class="card">
             <h3>Backup Completo e Restauração</h3><br>
-            <p style="font-size:0.85rem; color:#555;">Use isto para não perder os dados se for formatar o aparelho ou trocar de celular — é diferente do relatório acima, pois guarda TODOS os lançamentos e serviços cadastrados, não só os meses selecionados.</p>
+            <p style="font-size:0.85rem; color:#cbbdce;">Use isto para não perder os dados se for formatar o aparelho ou trocar de celular — é diferente do relatório acima, pois guarda TODOS os lançamentos e serviços cadastrados, não só os meses selecionados.</p>
             <button type="button" onclick="handleGerarBackup()">💾 Gerar Backup Completo</button>
             <div id="areaBackupGerado" style="display:none; margin-top:10px;">
                 <div class="form-group">
@@ -214,7 +214,7 @@ select[multiple] { height: auto; }
                 </div>
             </div>
 
-            <hr style="margin:16px 0; border:none; border-top:1px solid #eee;">
+            <hr style="margin:16px 0; border:none; border-top:1px solid #3a2840;">
 
             <h3 style="font-size:1rem;">Restaurar Backup</h3><br>
             <div class="form-group">
@@ -223,11 +223,11 @@ select[multiple] { height: auto; }
             </div>
             <button type="button" onclick="carregarBackupDeTexto()">Carregar Backup deste Texto</button>
 
-            <p style="font-size:0.8rem; color:#666; margin:10px 0 4px;">2) Ou tente selecionar o arquivo .json diretamente (pode não abrir, dependendo do app):</p>
+            <p style="font-size:0.8rem; color:#b8a8bc; margin:10px 0 4px;">2) Ou tente selecionar o arquivo .json diretamente (pode não abrir, dependendo do app):</p>
             <button type="button" class="btn-secundario" onclick="document.getElementById('inputBackup').click()">📂 Selecionar Arquivo de Backup</button>
             <input type="file" id="inputBackup" accept="application/json,.json" style="display:none" onchange="lidarComArquivoBackup(event)">
 
-            <div id="previewBackup" style="display:none; margin-top:14px; padding:10px; background:#f6f8fa; border-radius:6px;">
+            <div id="previewBackup" style="display:none; margin-top:14px; padding:10px; background:#2b1f31; border-radius:6px;">
                 <p id="infoBackup" style="font-size:0.85rem;"></p>
                 <div class="btn-linha">
                     <button type="button" onclick="restaurarBackup('substituir')">Substituir Tudo</button>
@@ -240,13 +240,13 @@ select[multiple] { height: auto; }
     <div id="tab-conta" class="tab-content">
         <div class="card">
             <h3>Conta e Sincronização na Nuvem</h3><br>
-            <p style="font-size:0.85rem; color:#555;">O app funciona 100% offline sempre. Ao entrar numa conta, os dados também são guardados na nuvem e sincronizados automaticamente entre seus aparelhos quando houver internet.</p>
-            <div id="areaConta"><p style="color:#666;">Carregando...</p></div>
+            <p style="font-size:0.85rem; color:#cbbdce;">O app funciona 100% offline sempre. Ao entrar numa conta, os dados também são guardados na nuvem e sincronizados automaticamente entre seus aparelhos quando houver internet.</p>
+            <div id="areaConta"><p style="color:#b8a8bc;">Carregando...</p></div>
         </div>
 
         <div class="card">
             <h3>Versão do App</h3><br>
-            <p id="indicadorVersao" style="font-size:0.9rem; color:#555;">v···</p>
+            <p id="indicadorVersao" style="font-size:0.9rem; color:#cbbdce;">v···</p>
             <button type="button" class="btn-secundario" onclick="verificarAtualizacaoManual()">🔄 Verificar Atualização</button>
         </div>
     </div>
@@ -510,7 +510,7 @@ select[multiple] { height: auto; }
             tbody.innerHTML += `
                 <tr>
                     <td>${log.data.split('-').reverse().join('/')}</td>
-                    <td>${log.atividade} ${log.obs ? `<br><small style="color:#666">Obs: ${log.obs}</small>` : ''} ${!log.synced ? '<br><small style="color:#c77700;">⏳ não sincronizado</small>' : ''}</td>
+                    <td>${log.atividade} ${log.obs ? `<br><small style="color:#b8a8bc">Obs: ${log.obs}</small>` : ''} ${!log.synced ? '<br><small style="color:#e8a33d;">⏳ não sincronizado</small>' : ''}</td>
                     <td><strong>${log.pontos}</strong></td>
                     <td><button class="delete-btn" onclick="deletarLog(${log.id})">X</button></td>
                 </tr>`;
@@ -597,7 +597,7 @@ select[multiple] { height: auto; }
         bancoDadosAtivos().sort((a,b) => a.nome.localeCompare(b.nome)).forEach(item => {
             tbody.innerHTML += `
                 <tr>
-                    <td>${item.nome} ${!item.synced ? '<br><small style="color:#c77700;">⏳ não sincronizado</small>' : ''}</td>
+                    <td>${item.nome} ${!item.synced ? '<br><small style="color:#e8a33d;">⏳ não sincronizado</small>' : ''}</td>
                     <td><strong>${item.pontos}</strong></td>
                     <td><span class="badge">${item.tec}</span></td>
                     <td>
@@ -666,7 +666,7 @@ select[multiple] { height: auto; }
         const cont = document.getElementById('listaMeses');
         const meses = getMesesDisponiveis();
         if (meses.length === 0) {
-            cont.innerHTML = '<p style="color:#666;">Nenhum lançamento registado ainda.</p>';
+            cont.innerHTML = '<p style="color:#b8a8bc;">Nenhum lançamento registado ainda.</p>';
             return;
         }
         cont.innerHTML = meses.map(ym => {
@@ -726,15 +726,10 @@ select[multiple] { height: auto; }
         desenharGrafico(dados, metrica);
     }
 
-    function desenharGrafico(dados, metrica) {
-        const canvas = document.getElementById('canvasComparativo');
-        const dpr = window.devicePixelRatio || 1;
-        const wCss = canvas.clientWidth || 300;
-        const hCss = 220;
-        canvas.width = wCss * dpr;
-        canvas.height = hCss * dpr;
-        const ctx = canvas.getContext('2d');
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const CORES_GRAFICO_TELA = { eixo: '#6b5a73', barra: '#ff7518', texto: '#f3e9da' };
+    const CORES_GRAFICO_IMPRESSAO = { eixo: '#999999', barra: '#e8720c', texto: '#333333' };
+
+    function desenharGraficoEm(ctx, wCss, hCss, dados, metrica, cores) {
         ctx.clearRect(0, 0, wCss, hCss);
 
         const valores = dados.map(d => metrica === 'pontos' ? d.totalPontos : metrica === 'qtd' ? d.qtdServicos : d.valorEstimado);
@@ -745,7 +740,7 @@ select[multiple] { height: auto; }
         const gap = larguraUtil / dados.length;
         const barW = Math.min(gap * 0.6, 50);
 
-        ctx.strokeStyle = '#ccc';
+        ctx.strokeStyle = cores.eixo;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(padding, padding);
@@ -758,9 +753,9 @@ select[multiple] { height: auto; }
             const barH = max > 0 ? (v / max) * alturaUtil : 0;
             const x = padding + i * gap + (gap - barW) / 2;
             const y = hCss - padding - barH;
-            ctx.fillStyle = '#0056b3';
+            ctx.fillStyle = cores.barra;
             ctx.fillRect(x, y, barW, barH);
-            ctx.fillStyle = '#333';
+            ctx.fillStyle = cores.texto;
             ctx.font = '10px sans-serif';
             ctx.textAlign = 'center';
             const rotuloValor = metrica === 'valor' ? 'R$' + v.toFixed(0) : v.toFixed(metrica === 'pontos' ? 1 : 0);
@@ -768,6 +763,18 @@ select[multiple] { height: auto; }
             const rotuloMes = d.nome.split('/')[0].slice(0, 3) + '/' + d.nome.split('/')[1].slice(2);
             ctx.fillText(rotuloMes, x + barW / 2, hCss - padding + 14);
         });
+    }
+
+    function desenharGrafico(dados, metrica) {
+        const canvas = document.getElementById('canvasComparativo');
+        const dpr = window.devicePixelRatio || 1;
+        const wCss = canvas.clientWidth || 300;
+        const hCss = 220;
+        canvas.width = wCss * dpr;
+        canvas.height = hCss * dpr;
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        desenharGraficoEm(ctx, wCss, hCss, dados, metrica, CORES_GRAFICO_TELA);
     }
 
     // ---------- Exportar CSV (planilha) ----------
@@ -902,7 +909,8 @@ select[multiple] { height: auto; }
                     const ctxEmbed = canvasEmbed.getContext('2d');
                     ctxEmbed.fillStyle = '#ffffff';
                     ctxEmbed.fillRect(0, 0, larguraEmbed, alturaEmbed);
-                    ctxEmbed.drawImage(canvas, 0, 0, larguraEmbed, alturaEmbed);
+                    const metricaAtual = document.getElementById('metricaGrafico').value;
+                    desenharGraficoEm(ctxEmbed, larguraEmbed, alturaEmbed, dados, metricaAtual, CORES_GRAFICO_IMPRESSAO);
                     const imgData = canvasEmbed.toDataURL('image/jpeg', 0.75);
                     doc.addImage(imgData, 'JPEG', 14, y, 180, 80);
                 } catch (e) { /* se falhar, segue sem o gráfico */ }
@@ -1541,7 +1549,7 @@ select[multiple] { height: auto; }
         area.innerHTML = `
             ${temGoogleDisponivel ? `
                 <button type="button" class="btn-secundario" onclick="handleEntrarComGoogleGate()">🔵 Entrar com Google</button>
-                <p style="text-align:center; font-size:0.8rem; color:#888; margin:10px 0;">ou entre com e-mail e senha:</p>
+                <p style="text-align:center; font-size:0.8rem; color:#9d8ca2; margin:10px 0;">ou entre com e-mail e senha:</p>
             ` : ''}
             <div class="form-group"><label>E-mail:</label><input type="email" id="gateEmail"></div>
             <div class="form-group"><label>Senha:</label><input type="password" id="gateSenha"></div>
@@ -1549,7 +1557,7 @@ select[multiple] { height: auto; }
                 <button type="button" onclick="handleEntrarGate()">Entrar</button>
                 <button type="button" class="btn-secundario" onclick="handleCadastrarGate()">Criar Conta</button>
             </div>
-            <p style="text-align:center; margin-top:10px;"><a href="#" onclick="handleEsqueciSenhaGate(); return false;" style="color:#0056b3; font-size:0.85rem;">Esqueci minha senha</a></p>`;
+            <p style="text-align:center; margin-top:10px;"><a href="#" onclick="handleEsqueciSenhaGate(); return false;" style="color:#ff9248; font-size:0.85rem;">Esqueci minha senha</a></p>`;
     }
 
     // Decodifica o "payload" (parte do meio) de um JWT, sem verificar
@@ -1709,7 +1717,7 @@ select[multiple] { height: auto; }
         if (!area) return;
 
         if (!sbConfigurado()) {
-            area.innerHTML = `<p style="color:#c77700;">A sincronização em nuvem ainda não foi configurada neste app (falta preencher SUPABASE_URL / SUPABASE_ANON_KEY no código-fonte). O app continua funcionando 100% offline normalmente.</p>`;
+            area.innerHTML = `<p style="color:#e8a33d;">A sincronização em nuvem ainda não foi configurada neste app (falta preencher SUPABASE_URL / SUPABASE_ANON_KEY no código-fonte). O app continua funcionando 100% offline normalmente.</p>`;
             return;
         }
 
@@ -1719,7 +1727,7 @@ select[multiple] { height: auto; }
             area.innerHTML = `
                 ${temGoogleDisponivel ? `
                     <button type="button" class="btn-secundario" onclick="handleEntrarComGoogleConta()">🔵 Entrar com Google</button>
-                    <p style="text-align:center; font-size:0.8rem; color:#888; margin:10px 0;">ou entre com e-mail e senha:</p>
+                    <p style="text-align:center; font-size:0.8rem; color:#9d8ca2; margin:10px 0;">ou entre com e-mail e senha:</p>
                 ` : ''}
                 <div class="form-group"><label>E-mail:</label><input type="email" id="contaEmail"></div>
                 <div class="form-group"><label>Senha:</label><input type="password" id="contaSenha"></div>
@@ -1727,23 +1735,23 @@ select[multiple] { height: auto; }
                     <button type="button" onclick="handleEntrarConta()">Entrar</button>
                     <button type="button" class="btn-secundario" onclick="handleCadastrarConta()">Criar Conta</button>
                 </div>
-                <p style="text-align:center; margin:8px 0;"><a href="#" onclick="handleEsqueciSenhaConta(); return false;" style="color:#0056b3; font-size:0.85rem;">Esqueci minha senha</a></p>
+                <p style="text-align:center; margin:8px 0;"><a href="#" onclick="handleEsqueciSenhaConta(); return false;" style="color:#ff9248; font-size:0.85rem;">Esqueci minha senha</a></p>
                 <p class="aviso-salvamento">Sem login, o app continua funcionando normalmente — só não sincroniza com outros aparelhos.</p>`;
         } else {
             const pendentes = logs.filter(l => !l.synced).length + bancoDados.filter(b => !b.synced).length;
             const ultimaSync = localStorage.getItem('sb_ultima_sync');
             area.innerHTML = `
                 <p>Logado como <strong>${sessao.email}</strong></p>
-                <p style="font-size:0.85rem; color:#666;">
+                <p style="font-size:0.85rem; color:#b8a8bc;">
                     ${sincronizando ? '🔄 Sincronizando...' : (pendentes > 0 ? `⏳ ${pendentes} item(ns) pendente(s)` : '✅ Tudo sincronizado')}<br>
                     ${ultimaSync ? 'Última sincronização: ' + new Date(parseInt(ultimaSync)).toLocaleString('pt-BR') : 'Ainda não sincronizou'}
-                    ${!navigator.onLine ? '<br><span style="color:#c0392b;">Sem conexão com a internet agora</span>' : ''}
+                    ${!navigator.onLine ? '<br><span style="color:#ff6b6b;">Sem conexão com a internet agora</span>' : ''}
                 </p>
                 <div class="btn-linha">
                     <button type="button" onclick="tentarSincronizar()">🔄 Sincronizar Agora</button>
                     <button type="button" class="btn-secundario" onclick="sairConta()">Sair</button>
                 </div>
-                ${ultimoErroSync ? `<p style="color:#c0392b; font-size:0.82rem; margin-top:10px; background:#fdecea; padding:8px; border-radius:5px;">❌ Erro na última sincronização: ${ultimoErroSync}</p>` : ''}`;
+                ${ultimoErroSync ? `<p style="color:#ff6b6b; font-size:0.82rem; margin-top:10px; background:#2e1416; padding:8px; border-radius:5px;">❌ Erro na última sincronização: ${ultimoErroSync}</p>` : ''}`;
         }
     }
 
@@ -1760,7 +1768,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.6.3';
+    const APP_VERSAO_ATUAL = '1.6.4';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
@@ -1846,7 +1854,7 @@ select[multiple] { height: auto; }
         if (document.getElementById('avisoAtualizacaoDisponivel')) return; // não duplica
         const aviso = document.createElement('div');
         aviso.id = 'avisoAtualizacaoDisponivel';
-        aviso.style.cssText = 'position:fixed; bottom:64px; left:10px; right:10px; background:#0056b3; color:#fff; padding:12px 14px; border-radius:8px; font-size:0.82rem; z-index:9999; box-shadow:0 2px 10px rgba(0,0,0,0.35);';
+        aviso.style.cssText = 'position:fixed; bottom:64px; left:10px; right:10px; background:#c1440e; color:#fff; padding:12px 14px; border-radius:8px; font-size:0.82rem; z-index:9999; box-shadow:0 2px 10px rgba(0,0,0,0.35);';
         aviso.innerHTML = `📦 Nova versão (${versao}) baixada — será aplicada na próxima vez que você abrir o app. <span style="float:right; cursor:pointer; padding-left:10px;" onclick="document.getElementById('avisoAtualizacaoDisponivel').remove()">✕</span>`;
         document.body.appendChild(aviso);
     }
@@ -1889,18 +1897,18 @@ select[multiple] { height: auto; }
 </script>
 
 
-<div id="telaLoginObrigatorio" style="display:none; position:fixed; inset:0; background:#f5f5f5; z-index:9998; overflow-y:auto; padding:24px 16px;">
+<div id="telaLoginObrigatorio" style="display:none; position:fixed; inset:0; background:#160f1a; z-index:9998; overflow-y:auto; padding:24px 16px;">
     <div style="max-width:400px; margin:60px auto 0;">
-        <h2 style="text-align:center; color:#0056b3; margin-bottom:4px;">Produção vs Pontuação</h2>
-        <p style="text-align:center; color:#666; font-size:0.85rem; margin-bottom:24px;">Entre para continuar</p>
+        <h2 style="text-align:center; color:#ff9248; margin-bottom:4px;">Produção vs Pontuação</h2>
+        <p style="text-align:center; color:#b8a8bc; font-size:0.85rem; margin-bottom:24px;">Entre para continuar</p>
         <div id="areaLoginObrigatorio" class="card"></div>
     </div>
 </div>
 
-<div id="telaNovaSenha" style="display:none; position:fixed; inset:0; background:#f5f5f5; z-index:9999; overflow-y:auto; padding:24px 16px;">
+<div id="telaNovaSenha" style="display:none; position:fixed; inset:0; background:#160f1a; z-index:9999; overflow-y:auto; padding:24px 16px;">
     <div style="max-width:400px; margin:60px auto 0;">
-        <h2 style="text-align:center; color:#0056b3; margin-bottom:4px;">Definir Nova Senha</h2>
-        <p style="text-align:center; color:#666; font-size:0.85rem; margin-bottom:24px;">Escolha uma nova senha pra sua conta</p>
+        <h2 style="text-align:center; color:#ff9248; margin-bottom:4px;">Definir Nova Senha</h2>
+        <p style="text-align:center; color:#b8a8bc; font-size:0.85rem; margin-bottom:24px;">Escolha uma nova senha pra sua conta</p>
         <div class="card">
             <div class="form-group"><label>Nova senha:</label><input type="password" id="novaSenhaInput"></div>
             <div class="form-group"><label>Confirmar nova senha:</label><input type="password" id="confirmarSenhaInput"></div>
@@ -1910,7 +1918,7 @@ select[multiple] { height: auto; }
 </div>
 
 <div id="modalConfirmacao" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; align-items:center; justify-content:center; padding:20px;">
-    <div style="background:#fff; border-radius:10px; padding:20px; max-width:340px; width:100%; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+    <div style="background:#241a29; border-radius:10px; padding:20px; max-width:340px; width:100%; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
         <p id="modalConfirmacaoTexto" style="margin:0 0 16px; font-size:0.95rem; line-height:1.4;"></p>
         <div class="btn-linha">
             <button type="button" onclick="modalConfirmacaoResponder(true)">Confirmar</button>
@@ -1920,7 +1928,7 @@ select[multiple] { height: auto; }
 </div>
 
 <div id="modalMensagem" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10001; align-items:center; justify-content:center; padding:20px;">
-    <div style="background:#fff; border-radius:10px; padding:20px; max-width:340px; width:100%; max-height:80vh; overflow-y:auto; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+    <div style="background:#241a29; border-radius:10px; padding:20px; max-width:340px; width:100%; max-height:80vh; overflow-y:auto; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
         <p id="modalMensagemTexto" style="margin:0 0 16px; font-size:0.9rem; line-height:1.4; white-space:pre-wrap;"></p>
         <button type="button" onclick="document.getElementById('modalMensagem').classList.remove('aberto')">OK</button>
     </div>
