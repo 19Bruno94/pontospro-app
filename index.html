@@ -5,47 +5,446 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>App Pontos vs Produção</title>
     <style>
-        :root { --primary: #c1440e; --bg: #160f1a; --card: #241a29; --text: #f3e9da; --danger: #b02a37; --success: #2d6b0a; }
+        /* Cores do tema Original (padrão). O motor de temas, no <head>, sobrescreve estas
+           variáveis conforme a escolha em Conta > Aparência. Se ele falhar por qualquer
+           motivo, o app continua com estas cores. */
+        :root {
+            --bg: #f4f7f6; --card: #ffffff; --text: #333333; --primary: #0056b3; --success: #28a745; --danger: #dc3545; --accent: #0056b3;
+            --on-primary: #ffffff; --on-success: #ffffff; --on-danger: #ffffff; --on-secondary: #ffffff; --primary-hover: #004494;
+            --muted: #666666; --muted-strong: #555555; --muted-soft: #888888; --border: #cccccc; --divider: #dddddd; --divider-soft: #f0f0f0;
+            --panel: #e9ecef; --panel2: #eeeeee; --panel-soft: #f8f9fa; --preview-bg: #f6f8fa; --secondary: #6c757d; --secondary-hover: #565e64;
+            --nav-bg: #ffffff; --overlay-bg: #f5f5f5; --warn: #c77700; --danger-bg: #fdecea; --danger-text: #c0392b;
+            --valor-bg: #e2f0d9; --valor-text: #385723; --valor-border: #ccdd33; --input-bg: #ffffff; --input-text: #000000; --ctl-accent: auto; --card-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: var(--bg); color: var(--text); padding-bottom: 70px; }
-        header { background: var(--primary); color: white; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; position: sticky; top: 0; z-index: 100; }
+        header { background: var(--primary); color: var(--on-primary); padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; position: sticky; top: 0; z-index: 100; }
         .container { padding: 15px; max-width: 600px; margin: auto; }
-        .card { background: var(--card); padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .card { background: var(--card); padding: 15px; border-radius: 8px; box-shadow: var(--card-shadow); margin-bottom: 15px; }
         .form-group { margin-bottom: 12px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
-        input, select, button { width: 100%; padding: 10px; border: 1px solid #6b5a73; border-radius: 5px; font-size: 1rem; }
-        button { background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 5px; }
-        button:hover { background: #9a3700; }
+        input, select, button { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 5px; font-size: 1rem; }
+        /* Campos de formulário seguem o tema — exceto no Original, onde o navegador desenha como sempre desenhou. */
+        html:not([data-tema="original"]) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+        html:not([data-tema="original"]) select,
+        html:not([data-tema="original"]) textarea { background-color: var(--input-bg); color: var(--input-text); }
+        input[type="checkbox"], input[type="radio"] { accent-color: var(--ctl-accent); }
+        button { background: var(--primary); color: var(--on-primary); border: none; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        button:hover { background: var(--primary-hover); }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
-        th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #4a3750; }
-        th { background: #3d2d44; font-weight: bold; }
-        .nav-bar { position: fixed; bottom: 0; width: 100%; background: #1f1624; display: flex; box-shadow: 0 -2px 5px rgba(0,0,0,0.1); z-index: 100; }
-        .nav-btn { flex: 1; padding: 15px 5px; border: none; background: none; color: #b8a8bc; font-weight: bold; cursor: pointer; font-size: 0.85rem; text-align: center; }
-        .nav-btn.active { color: #ff9248; border-top: 3px solid #ff9248; background: #2b1f31; }
+        th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--divider); }
+        th { background: var(--panel2); font-weight: bold; }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: var(--nav-bg); display: flex; box-shadow: 0 -2px 5px rgba(0,0,0,0.1); z-index: 100; }
+        .nav-btn { flex: 1; padding: 15px 5px; border: none; background: none; color: var(--muted); font-weight: bold; cursor: pointer; font-size: 0.85rem; text-align: center; }
+        .nav-btn.active { color: var(--accent); border-top: 3px solid var(--accent); background: var(--panel-soft); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .dash-card { background: #2b1f31; padding: 15px; border-radius: 8px; text-align: center; }
-        .dash-card h3 { font-size: 1.5rem; color: #ff9248; }
+        .dash-card { background: var(--panel); padding: 15px; border-radius: 8px; text-align: center; }
+        .dash-card h3 { font-size: 1.5rem; color: var(--accent); }
         .dash-card p { font-size: 0.8rem; font-weight: bold; text-transform: uppercase; }
-        .delete-btn { background: var(--danger); padding: 5px; color: white; font-size: 0.8rem; width: auto; display: inline-block; margin: 0; }
-        .badge { background: #33233a; padding: 2px 6px; border-radius: 10px; font-size: 0.75rem; font-weight: normal; float: right; }
-        .lista-meses { max-height: 220px; overflow-y: auto; border: 1px solid #4a3750; border-radius: 5px; padding: 8px 12px; margin-bottom: 10px; }
-        .lista-meses label { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-weight: normal; border-bottom: 1px solid #3a2840; }
+        .delete-btn { background: var(--danger); padding: 5px; color: var(--on-danger); font-size: 0.8rem; width: auto; display: inline-block; margin: 0; }
+        .badge { background: var(--panel2); padding: 2px 6px; border-radius: 10px; font-size: 0.75rem; font-weight: normal; float: right; }
+        .lista-meses { max-height: 220px; overflow-y: auto; border: 1px solid var(--divider); border-radius: 5px; padding: 8px 12px; margin-bottom: 10px; }
+        .lista-meses label { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-weight: normal; border-bottom: 1px solid var(--divider-soft); }
         .lista-meses label:last-child { border-bottom: none; }
         .lista-meses input[type="checkbox"] { width: auto; }
-        .btn-secundario { background: #5a4a5f; }
-        .btn-secundario:hover { background: #473a4d; }
+        .btn-secundario { background: var(--secondary); color: var(--on-secondary); }
+        .btn-secundario:hover { background: var(--secondary-hover); }
         .btn-linha { display: flex; gap: 8px; }
         .btn-linha button { margin-top: 0; }
-        #canvasComparativo { width: 100%; height: 220px; display: block; margin-top: 10px; background: #241a29; border-radius: 6px; }
+        #canvasComparativo { width: 100%; height: 220px; display: block; margin-top: 10px; background: var(--card); border-radius: 6px; }
         #areaTextoFallback { margin-top: 10px; }
         #areaTextoFallback textarea { min-height: 140px; font-family: monospace; font-size: 0.75rem; }
-        .aviso-salvamento { font-size: 0.78rem; color: #b8a8bc; margin-top: 8px; line-height: 1.4; }
+        .aviso-salvamento { font-size: 0.78rem; color: var(--muted); margin-top: 8px; line-height: 1.4; }
 select[multiple] { height: auto; }
 #modalConfirmacao.aberto { display: flex !important; }
 #modalMensagem.aberto { display: flex !important; }
+
+        /* ---- Aparência: temas prontos e seletor de cor ---- */
+        .temas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+        .chip-tema { width: 100%; margin: 0; padding: 8px; background: var(--card); color: var(--text); border: 2px solid var(--divider); border-radius: 8px; text-align: left; font-weight: normal; font-size: 0.85rem; }
+        .chip-tema:hover { background: var(--card); }
+        .chip-tema.ativo { border-color: var(--accent); }
+        .chip-nome { display: block; margin-top: 6px; font-weight: bold; }
+        .chip-tema.ativo .chip-nome::after { content: ' \2713'; color: var(--accent); }
+        .mini { display: block; height: 52px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+        .mini-topo { display: block; height: 11px; }
+        .mini-card { display: block; margin: 6px 8px 0; padding: 4px 5px; border-radius: 3px; }
+        .mini-card i { display: block; height: 3px; border-radius: 2px; margin-bottom: 3px; }
+        .mini-card i:last-child { margin-bottom: 0; width: 55%; }
+        .sub-aparencia { font-size: 0.95rem; margin: 4px 0 8px; }
+        .linha-cor { display: flex; align-items: center; gap: 12px; width: 100%; margin: 0 0 8px; padding: 8px 10px; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 8px; text-align: left; font-weight: normal; font-size: 0.9rem; }
+        .linha-cor:hover { background: var(--card); }
+        .linha-cor .amostra { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--border); }
+        .linha-cor .info { flex: 1; min-width: 0; }
+        .linha-cor .info b { display: block; }
+        .linha-cor .info small { color: var(--muted); font-size: 0.75rem; }
+        .linha-cor code { font-family: monospace; font-size: 0.78rem; color: var(--muted); }
+        .opcao-acento { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; font-weight: normal; font-size: 0.85rem; }
+        .opcao-acento input { width: auto; }
+        .avisos-contraste { margin-bottom: 10px; font-size: 0.8rem; line-height: 1.4; color: var(--danger-text); }
+        .avisos-contraste:empty { display: none; }
+        #modalCor.aberto { display: flex !important; }
+        .caixa-cor { background: var(--card); color: var(--text); border-radius: 10px; padding: 18px; max-width: 340px; width: 100%; max-height: 92vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .cor-topo { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; }
+        #corPrevia { flex: none; width: 46px; height: 46px; border-radius: 8px; border: 2px solid var(--border); }
+        #corHex { font-family: monospace; }
+        #corHex.invalido { border-color: var(--danger); }
+        .paleta { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; margin: 12px 0; }
+        .paleta button { width: 100%; height: 28px; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 6px; }
+        .rotulo-slider { margin-bottom: 2px; font-size: 0.8rem; }
+        .slider-cor { -webkit-appearance: none; appearance: none; height: 16px; padding: 0; margin: 2px 0 12px; border: 1px solid var(--border); border-radius: 8px; }
+        .slider-cor::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 3px solid #333; box-shadow: 0 1px 4px rgba(0,0,0,0.45); }
+        .slider-cor::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 3px solid #333; }
+        #corAvisos { font-size: 0.78rem; line-height: 1.45; margin-bottom: 10px; }
+        #corAvisos .ruim { color: var(--danger-text); }
+        #corAvisos .bom { color: var(--muted); }
     </style>
+    <script>
+    // ==================================================================
+    // MOTOR DE TEMAS
+    // Fica no <head> de propósito: roda ANTES da página ser desenhada,
+    // então quem escolheu um tema escuro nunca vê um piscar de branco ao
+    // abrir o app. Não mexe em nenhum elemento da página — só grava
+    // variáveis CSS no <html> —, por isso não depende da ordem do DOM.
+    //
+    // Modelo: um tema = 7 cores-base (fundo, cartões, texto, principal,
+    // destaque, salvar, excluir). Todo o resto (bordas, divisores, painéis,
+    // texto secundário, texto sobre botões...) é DERIVADO dessas 7, então
+    // trocar uma cor nunca deixa pedaço do app com a paleta antiga.
+    // ==================================================================
+    (function () {
+        'use strict';
+
+        const CHAVE = 'app_tema';
+
+        // ---------------- utilidades de cor ----------------
+        function normalizarHex(h) {
+            if (typeof h !== 'string') return null;
+            h = h.trim().toLowerCase().replace(/^#/, '');
+            if (/^[0-9a-f]{3}$/.test(h)) h = h.replace(/(.)/g, '$1$1');
+            return /^[0-9a-f]{6}$/.test(h) ? '#' + h : null;
+        }
+        function rgb(h) {
+            h = normalizarHex(h);
+            return [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)];
+        }
+        function hex(r, g, b) {
+            return '#' + [r, g, b].map(v => {
+                v = Math.max(0, Math.min(255, Math.round(v)));
+                return (v < 16 ? '0' : '') + v.toString(16);
+            }).join('');
+        }
+        function misturar(a, b, t) {
+            const A = rgb(a), B = rgb(b);
+            return hex(A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t, A[2] + (B[2] - A[2]) * t);
+        }
+        function luminancia(h) {
+            const c = rgb(h).map(v => {
+                v /= 255;
+                return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+            });
+            return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+        }
+        function contraste(a, b) {
+            const la = luminancia(a), lb = luminancia(b);
+            return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+        }
+        // Texto branco ou preto — o que der mais contraste sobre o fundo dado.
+        // No pior caso (cor de meio-tom) dá 4,58:1, nunca abaixo de 4,5.
+        function textoSobre(fundo) {
+            return contraste('#ffffff', fundo) >= contraste('#000000', fundo) ? '#ffffff' : '#000000';
+        }
+        // Clareia ou escurece 'cor' até ter contraste mínimo contra TODOS os fundos.
+        function ajustarContraste(cor, fundos, minimo) {
+            const lista = Array.isArray(fundos) ? fundos : [fundos];
+            const ok = c => lista.every(f => contraste(c, f) >= minimo);
+            if (ok(cor)) return cor;
+            const media = lista.reduce((s, f) => s + luminancia(f), 0) / lista.length;
+            const alvo = media < 0.18 ? '#ffffff' : '#000000';
+            for (let i = 1; i <= 20; i++) {
+                const c = misturar(cor, alvo, i / 20);
+                if (ok(c)) return c;
+            }
+            return alvo;
+        }
+        function hexParaHsl(h) {
+            const [r, g, b] = rgb(h).map(v => v / 255);
+            const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+            let H = 0, S = 0;
+            const L = (max + min) / 2;
+            if (d !== 0) {
+                S = d / (1 - Math.abs(2 * L - 1));
+                if (max === r) H = ((g - b) / d) % 6;
+                else if (max === g) H = (b - r) / d + 2;
+                else H = (r - g) / d + 4;
+                H *= 60;
+                if (H < 0) H += 360;
+            }
+            return { h: Math.round(H), s: Math.round(S * 100), l: Math.round(L * 100) };
+        }
+        function hslParaHex(H, S, L) {
+            S /= 100; L /= 100;
+            const c = (1 - Math.abs(2 * L - 1)) * S;
+            const x = c * (1 - Math.abs((H / 60) % 2 - 1));
+            const m = L - c / 2;
+            let r = 0, g = 0, b = 0;
+            if (H < 60) { r = c; g = x; }
+            else if (H < 120) { r = x; g = c; }
+            else if (H < 180) { g = c; b = x; }
+            else if (H < 240) { g = x; b = c; }
+            else if (H < 300) { r = x; b = c; }
+            else { r = c; b = x; }
+            return hex((r + m) * 255, (g + m) * 255, (b + m) * 255);
+        }
+
+        // ---------------- derivação: 7 cores-base -> todas as variáveis ----------------
+        const SOMBRA_CARTAO = '0 2px 5px rgba(0,0,0,0.1)';
+        function derivar(b) {
+            const bg = b.bg, card = b.card, text = b.text;
+            const primary = b.primary, success = b.success, danger = b.danger;
+            // Texto mais claro que o cartão = tema escuro.
+            const escuro = luminancia(text) > luminancia(card);
+            const painel = misturar(card, text, 0.08);
+            const painelSuave = misturar(card, text, 0.04);
+            // Destaque automático: a cor principal, ajustada até ler bem em TODAS as
+            // superfícies onde aparece como texto (fundo, cartão, painéis, aba ativa).
+            const accent = b.accent || ajustarContraste(primary, [card, bg, painel, painelSuave], 4.6);
+            const secundario = escuro ? misturar(card, text, 0.28) : misturar(text, card, 0.22);
+            const valorBg = misturar(card, success, escuro ? 0.22 : 0.16);
+            const dangerBg = misturar(card, danger, escuro ? 0.22 : 0.10);
+            return {
+                '--bg': bg, '--card': card, '--text': text,
+                '--primary': primary, '--success': success, '--danger': danger,
+                '--accent': accent,
+                '--on-primary': textoSobre(primary),
+                '--on-success': textoSobre(success),
+                '--on-danger': textoSobre(danger),
+                '--on-secondary': textoSobre(secundario),
+                '--primary-hover': misturar(primary, '#000000', 0.2),
+                '--muted': misturar(text, card, 1 / 4),
+                '--muted-strong': misturar(text, card, 1 / 6),
+                '--muted-soft': misturar(text, card, 5 / 12),
+                '--border': misturar(card, text, 1 / 4),
+                '--divider': misturar(card, text, 1 / 6),
+                '--divider-soft': misturar(card, text, 0.0735),
+                '--panel': painel,
+                '--panel2': misturar(card, text, 1 / 12),
+                '--panel-soft': painelSuave,
+                '--preview-bg': painelSuave,
+                '--secondary': secundario,
+                '--secondary-hover': misturar(secundario, escuro ? '#ffffff' : '#000000', 0.15),
+                '--nav-bg': card,
+                '--overlay-bg': bg,
+                '--warn': ajustarContraste('#c77700', [card], 4.5),
+                '--danger-bg': dangerBg,
+                '--danger-text': ajustarContraste(danger, [dangerBg, card], 4.5),
+                '--valor-bg': valorBg,
+                '--valor-text': ajustarContraste(success, [valorBg], 6),
+                '--valor-border': misturar(valorBg, success, 0.6),
+                '--input-bg': misturar(card, bg, 0.5),
+                '--input-text': text,
+                '--ctl-accent': accent,
+                // Sombra dos cartões. Se cartão e fundo ficam iguais, um filete mantém os cartões visíveis.
+                '--card-shadow': contraste(card, bg) < 1.04 ? SOMBRA_CARTAO + ', 0 0 0 1px ' + misturar(card, text, 0.25) : SOMBRA_CARTAO
+            };
+        }
+
+        // ---------------- temas prontos ----------------
+        // 'extras' sobrepõe valores derivados quando o tema tem valores escolhidos
+        // a dedo. O Original usa isso pra reproduzir EXATAMENTE as cores de sempre.
+        const BASE_ORIGINAL = { bg: '#f4f7f6', card: '#ffffff', text: '#333333', primary: '#0056b3', accent: null, success: '#28a745', danger: '#dc3545' };
+
+        const TEMAS = [
+            {
+                id: 'original', nome: 'Original',
+                base: BASE_ORIGINAL,
+                extras: {
+                    '--panel': '#e9ecef', '--panel-soft': '#f8f9fa', '--preview-bg': '#f6f8fa',
+                    '--secondary': '#6c757d', '--secondary-hover': '#565e64', '--primary-hover': '#004494',
+                    '--overlay-bg': '#f5f5f5',
+                    // O app sempre usou texto branco nos botões verde e vermelho.
+                    '--on-success': '#ffffff', '--on-danger': '#ffffff',
+                    '--warn': '#c77700', '--danger-text': '#c0392b', '--danger-bg': '#fdecea',
+                    '--valor-bg': '#e2f0d9', '--valor-text': '#385723', '--valor-border': '#ccdd33',
+                    '--input-bg': '#ffffff', '--input-text': '#000000', '--ctl-accent': 'auto'
+                }
+            },
+            {
+                id: 'escuro', nome: 'Escuro',
+                base: { bg: '#101418', card: '#1b2128', text: '#e9edf2', primary: '#2563eb', accent: null, success: '#1e8449', danger: '#c0392b' },
+                extras: {}
+            },
+            {
+                id: 'halloween', nome: 'Halloween',
+                base: { bg: '#160f1a', card: '#241a29', text: '#f3e9da', primary: '#c1440e', accent: '#ff9248', success: '#2d6b0a', danger: '#b02a37' },
+                extras: {
+                    '--muted': '#b8a8bc', '--muted-strong': '#cbbdce', '--muted-soft': '#9d8ca2',
+                    '--border': '#6b5a73', '--divider': '#4a3750', '--divider-soft': '#3a2840',
+                    '--panel': '#2b1f31', '--panel2': '#3a2840', '--panel-soft': '#2b1f31', '--preview-bg': '#2b1f31',
+                    '--secondary': '#5a4a5f', '--secondary-hover': '#473a4d', '--primary-hover': '#9a3700',
+                    '--nav-bg': '#1f1624', '--overlay-bg': '#160f1a',
+                    '--warn': '#e8a33d', '--danger-text': '#ff6b6b', '--danger-bg': '#2e1416',
+                    '--valor-bg': '#1a2e12', '--valor-text': '#6fdc1a', '--valor-border': '#6fdc1a'
+                }
+            },
+            {
+                id: 'floresta', nome: 'Floresta',
+                base: { bg: '#eef3ec', card: '#ffffff', text: '#1f2a21', primary: '#2e7d32', accent: null, success: '#00796b', danger: '#c62828' },
+                extras: {}
+            },
+            {
+                id: 'roxo', nome: 'Roxo',
+                base: { bg: '#f4f1f9', card: '#ffffff', text: '#2b2435', primary: '#6a3fb5', accent: null, success: '#2e7d32', danger: '#c62828' },
+                extras: {}
+            },
+            {
+                id: 'contraste', nome: 'Alto contraste',
+                base: { bg: '#ffffff', card: '#ffffff', text: '#000000', primary: '#00267f', accent: null, success: '#005a1e', danger: '#a50016' },
+                extras: {
+                    '--border': '#000000', '--divider': '#444444', '--divider-soft': '#777777',
+                    '--muted-soft': '#444444', '--card-shadow': SOMBRA_CARTAO + ', 0 0 0 1px #000000'
+                }
+            }
+        ];
+
+        const PAPEIS = ['bg', 'card', 'text', 'primary', 'accent', 'success', 'danger'];
+
+        // ---------------- estado e persistência ----------------
+        let estado = { ativo: 'original', custom: null };
+        let ultimasVars = null;
+
+        function clonar(o) { return JSON.parse(JSON.stringify(o)); }
+
+        function sanitizarBase(b) {
+            const r = {};
+            PAPEIS.forEach(p => {
+                const h = b && normalizarHex(b[p]);
+                r[p] = h || (p === 'accent' ? null : BASE_ORIGINAL[p]);
+            });
+            return r;
+        }
+        function temaPorId(id) { return TEMAS.filter(t => t.id === id)[0]; }
+        function baseDe(id) {
+            if (id === 'custom') return estado.custom || BASE_ORIGINAL;
+            return (temaPorId(id) || TEMAS[0]).base;
+        }
+        function variaveisDe(id) {
+            const t = id === 'custom' ? null : (temaPorId(id) || TEMAS[0]);
+            const extras = t ? t.extras : {};
+            const v = Object.assign(derivar(baseDe(id)), extras);
+            // O texto sobre cada botão é recalculado DEPOIS dos valores fixos do tema
+            // (senão um 'secondary' escolhido a dedo ficaria com o texto do derivado),
+            // a menos que o tema fixe o texto explicitamente.
+            [['--on-primary', '--primary'], ['--on-success', '--success'],
+             ['--on-danger', '--danger'], ['--on-secondary', '--secondary']].forEach(par => {
+                if (!(par[0] in extras)) v[par[0]] = textoSobre(v[par[1]]);
+            });
+            return v;
+        }
+
+        function carregar() {
+            try {
+                const bruto = JSON.parse(localStorage.getItem(CHAVE));
+                if (bruto && typeof bruto === 'object') {
+                    const custom = bruto.custom ? sanitizarBase(bruto.custom) : null;
+                    let ativo = bruto.ativo;
+                    if (ativo === 'custom') { if (!custom) ativo = 'original'; }
+                    else if (!temaPorId(ativo)) ativo = 'original';
+                    estado = { ativo: ativo, custom: custom };
+                }
+            } catch (e) { /* sem armazenamento ou dado inválido: segue no Original */ }
+        }
+        function salvar() {
+            try { localStorage.setItem(CHAVE, JSON.stringify(estado)); } catch (e) { /* ok */ }
+        }
+
+        function aplicar() {
+            const v = variaveisDe(estado.ativo);
+            ultimasVars = v;
+            const raiz = document.documentElement;
+            for (const k in v) raiz.style.setProperty(k, v[k]);
+            raiz.setAttribute('data-tema', estado.ativo);
+            // Controles nativos (calendário do campo de data, barras de rolagem)
+            // acompanham o tema escuro; no claro não mexe em nada.
+            const b = baseDe(estado.ativo);
+            raiz.style.colorScheme = luminancia(b.text) > luminancia(b.card) ? 'dark' : '';
+            try { window.dispatchEvent(new CustomEvent('tema-aplicado')); } catch (e) { /* ok */ }
+        }
+
+        // ---------------- verificação de legibilidade ----------------
+        function pares() {
+            const b = baseDe(estado.ativo), v = variaveisDe(estado.ativo);
+            const auto = !b.accent;
+            const lista = [
+                { papeis: ['text', 'card'], texto: 'Texto sobre os cartões', a: v['--text'], b: v['--card'], min: 4.5 },
+                { papeis: ['text', 'bg'], texto: 'Texto sobre o fundo', a: v['--text'], b: v['--bg'], min: 4.5 },
+                { papeis: ['text', 'card'], texto: 'Textos secundários sobre os cartões', a: v['--muted-soft'], b: v['--card'], min: 3 },
+                { papeis: auto ? ['accent', 'primary'] : ['accent'], texto: 'Destaque sobre os cartões', a: v['--accent'], b: v['--card'], min: 4.5 },
+                { papeis: auto ? ['accent', 'primary'] : ['accent'], texto: 'Destaque sobre o fundo', a: v['--accent'], b: v['--bg'], min: 4.5 },
+                { papeis: auto ? ['accent', 'primary'] : ['accent'], texto: 'Destaque sobre os painéis e a aba ativa', a: v['--accent'],
+                  b: contraste(v['--accent'], v['--panel']) < contraste(v['--accent'], v['--panel-soft']) ? v['--panel'] : v['--panel-soft'], min: 4.5 },
+                { papeis: ['primary', 'card'], texto: 'Botões sobre os cartões', a: v['--primary'], b: v['--card'], min: 1.8 },
+                { papeis: ['success', 'card'], texto: 'Botão Salvar sobre os cartões', a: v['--success'], b: v['--card'], min: 1.8 },
+                { papeis: ['danger', 'card'], texto: 'Botão Excluir sobre os cartões', a: v['--danger'], b: v['--card'], min: 1.8 }
+            ];
+            return lista.map(p => {
+                const r = contraste(p.a, p.b);
+                return { papeis: p.papeis, texto: p.texto, razao: Math.round(r * 10) / 10, min: p.min, ok: r >= p.min };
+            });
+        }
+
+        // ---------------- API pública ----------------
+        window.TemaApp = {
+            TEMAS: TEMAS.map(t => ({ id: t.id, nome: t.nome })),
+            PAPEIS: PAPEIS,
+            normalizarHex: normalizarHex,
+            contraste: contraste,
+            hexParaHsl: hexParaHsl,
+            hslParaHex: hslParaHex,
+            ativo: () => estado.ativo,
+            temCustom: () => !!estado.custom,
+            baseAtual: () => clonar(baseDe(estado.ativo)),
+            variaveisAtuais: () => variaveisDe(estado.ativo),
+            variaveisDe: variaveisDe,
+            escolher: function (id) {
+                if (id === 'custom' ? !estado.custom : !temaPorId(id)) return false;
+                estado.ativo = id;
+                aplicar();
+                return true;
+            },
+            definirCor: function (papel, valor) {
+                const h = normalizarHex(valor);
+                if (!h || PAPEIS.indexOf(papel) < 0) return false;
+                const b = clonar(baseDe(estado.ativo));
+                b[papel] = h;
+                estado = { ativo: 'custom', custom: b };
+                aplicar();
+                return true;
+            },
+            acentoAuto: function (sim) {
+                const b = clonar(baseDe(estado.ativo));
+                b.accent = sim ? null : variaveisDe(estado.ativo)['--accent'];
+                estado = { ativo: 'custom', custom: b };
+                aplicar();
+            },
+            snapshot: () => clonar(estado),
+            restaurar: function (s) { estado = clonar(s); aplicar(); },
+            salvar: salvar,
+            pares: pares,
+            diagnostico: () => pares().filter(p => !p.ok),
+            // Cores do gráfico na tela (o PDF usa paleta própria, fixa, de impressão).
+            coresGrafico: function () {
+                const v = ultimasVars || variaveisDe(estado.ativo);
+                return { eixo: v['--border'], barra: v['--accent'], texto: v['--text'] };
+            }
+        };
+
+        carregar();
+        aplicar();
+    })();
+    </script>
 </head>
 <body>
 
@@ -72,7 +471,7 @@ select[multiple] { height: auto; }
                     <label>Observação (Opcional):</label>
                     <input type="text" id="obsInput" placeholder="Ex: OS número XXXXX">
                 </div>
-                <button type="submit" style="background: var(--success);">Salvar Lançamento</button>
+                <button type="submit" style="background: var(--success); color: var(--on-success);">Salvar Lançamento</button>
             </form>
         </div>
 
@@ -105,9 +504,9 @@ select[multiple] { height: auto; }
                 <div class="dash-card"><h3 id="dashServicos">0</h3><p>Qtd Serviços</p></div>
             </div>
             <br>
-            <div class="dash-card" style="background:#1a2e12; color:#6fdc1a; border: 1px solid #6fdc1a;">
+            <div class="dash-card" style="background:var(--valor-bg); color:var(--valor-text); border: 1px solid var(--valor-border);">
                 <p>Valor por Ponto: <span id="dashValorPonto" style="font-weight:bold;">R$ 0,00</span></p>
-                <h3 id="dashValor" style="font-size: 2rem; color: #6fdc1a; margin-top: 5px;">R$ 0,00</h3>
+                <h3 id="dashValor" style="font-size: 2rem; color: var(--valor-text); margin-top: 5px;">R$ 0,00</h3>
                 <p style="margin-top: 5px;">Valor Final Calculado</p>
             </div>
         </div>
@@ -116,7 +515,7 @@ select[multiple] { height: auto; }
     <div id="tab-servicos" class="tab-content">
         <div class="card">
             <h3>Adicionar ou Alterar Serviço</h3>
-            <p id="avisoModoServico" style="font-size: 0.8rem; color: #b8a8bc; margin-bottom: 10px;">Para alterar a pontuação de um serviço já existente, use o botão "Editar" na lista abaixo — ou digite o mesmo nome aqui manualmente.</p>
+            <p id="avisoModoServico" style="font-size: 0.8rem; color: var(--muted); margin-bottom: 10px;">Para alterar a pontuação de um serviço já existente, use o botão "Editar" na lista abaixo — ou digite o mesmo nome aqui manualmente.</p>
             <form id="formConfigServico">
                 <div class="form-group">
                     <label>Nome da Atividade:</label>
@@ -163,7 +562,7 @@ select[multiple] { height: auto; }
                 <button type="button" class="btn-secundario" onclick="selecionarTodosMeses(true)">Marcar Todos</button>
                 <button type="button" class="btn-secundario" onclick="selecionarTodosMeses(false)">Limpar</button>
             </div>
-            <div id="listaMeses" class="lista-meses"><p style="color:#b8a8bc;">Nenhum lançamento registado ainda.</p></div>
+            <div id="listaMeses" class="lista-meses"><p style="color:var(--muted);">Nenhum lançamento registado ainda.</p></div>
             <div class="form-group">
                 <label>IRR Medido (para valor estimado):</label>
                 <input type="number" id="irrRelatorio" value="1" step="0.001">
@@ -205,7 +604,7 @@ select[multiple] { height: auto; }
 
         <div class="card">
             <h3>Backup Completo e Restauração</h3><br>
-            <p style="font-size:0.85rem; color:#cbbdce;">Use isto para não perder os dados se for formatar o aparelho ou trocar de celular — é diferente do relatório acima, pois guarda TODOS os lançamentos e serviços cadastrados, não só os meses selecionados.</p>
+            <p style="font-size:0.85rem; color:var(--muted-strong);">Use isto para não perder os dados se for formatar o aparelho ou trocar de celular — é diferente do relatório acima, pois guarda TODOS os lançamentos e serviços cadastrados, não só os meses selecionados.</p>
             <button type="button" onclick="handleGerarBackup()">💾 Gerar Backup Completo</button>
             <div id="areaBackupGerado" style="display:none; margin-top:10px;">
                 <div class="form-group">
@@ -214,7 +613,7 @@ select[multiple] { height: auto; }
                 </div>
             </div>
 
-            <hr style="margin:16px 0; border:none; border-top:1px solid #3a2840;">
+            <hr style="margin:16px 0; border:none; border-top:1px solid var(--panel2);">
 
             <h3 style="font-size:1rem;">Restaurar Backup</h3><br>
             <div class="form-group">
@@ -223,11 +622,11 @@ select[multiple] { height: auto; }
             </div>
             <button type="button" onclick="carregarBackupDeTexto()">Carregar Backup deste Texto</button>
 
-            <p style="font-size:0.8rem; color:#b8a8bc; margin:10px 0 4px;">2) Ou tente selecionar o arquivo .json diretamente (pode não abrir, dependendo do app):</p>
+            <p style="font-size:0.8rem; color:var(--muted); margin:10px 0 4px;">2) Ou tente selecionar o arquivo .json diretamente (pode não abrir, dependendo do app):</p>
             <button type="button" class="btn-secundario" onclick="document.getElementById('inputBackup').click()">📂 Selecionar Arquivo de Backup</button>
             <input type="file" id="inputBackup" accept="application/json,.json" style="display:none" onchange="lidarComArquivoBackup(event)">
 
-            <div id="previewBackup" style="display:none; margin-top:14px; padding:10px; background:#2b1f31; border-radius:6px;">
+            <div id="previewBackup" style="display:none; margin-top:14px; padding:10px; background:var(--preview-bg); border-radius:6px;">
                 <p id="infoBackup" style="font-size:0.85rem;"></p>
                 <div class="btn-linha">
                     <button type="button" onclick="restaurarBackup('substituir')">Substituir Tudo</button>
@@ -240,13 +639,24 @@ select[multiple] { height: auto; }
     <div id="tab-conta" class="tab-content">
         <div class="card">
             <h3>Conta e Sincronização na Nuvem</h3><br>
-            <p style="font-size:0.85rem; color:#cbbdce;">O app funciona 100% offline sempre. Ao entrar numa conta, os dados também são guardados na nuvem e sincronizados automaticamente entre seus aparelhos quando houver internet.</p>
-            <div id="areaConta"><p style="color:#b8a8bc;">Carregando...</p></div>
+            <p style="font-size:0.85rem; color:var(--muted-strong);">O app funciona 100% offline sempre. Ao entrar numa conta, os dados também são guardados na nuvem e sincronizados automaticamente entre seus aparelhos quando houver internet.</p>
+            <div id="areaConta"><p style="color:var(--muted);">Carregando...</p></div>
+        </div>
+
+        <div class="card" id="cardAparencia">
+            <h3>🎨 Aparência</h3><br>
+            <p class="aviso-salvamento" style="margin:0 0 12px;">Escolha um tema pronto ou ajuste cada cor do seu jeito. A escolha fica salva só neste aparelho.</p>
+            <div id="temasProntos" class="temas-grid"></div>
+            <h4 class="sub-aparencia">Personalizar cores</h4>
+            <div id="linhasCores"></div>
+            <label class="opcao-acento"><input type="checkbox" id="chkAcentoAuto"> Destaque acompanha a cor principal</label>
+            <div id="avisosContraste" class="avisos-contraste"></div>
+            <button type="button" id="btnRestaurarOriginal" class="btn-secundario">↩ Restaurar cores originais</button>
         </div>
 
         <div class="card">
             <h3>Versão do App</h3><br>
-            <p id="indicadorVersao" style="font-size:0.9rem; color:#cbbdce;">v···</p>
+            <p id="indicadorVersao" style="font-size:0.9rem; color:var(--muted-strong);">v···</p>
             <button type="button" class="btn-secundario" onclick="verificarAtualizacaoManual()">🔄 Verificar Atualização</button>
         </div>
     </div>
@@ -459,6 +869,7 @@ select[multiple] { height: auto; }
         } else if(tab === 'relatorios') {
             document.getElementById('app-title').innerText = "Relatórios de Produção";
             renderizarListaMeses();
+            if (graficoDesatualizado) redesenharGraficoSePreciso();
         } else if(tab === 'conta') {
             document.getElementById('app-title').innerText = "Conta e Sincronização";
             atualizarTelaConta();
@@ -510,7 +921,7 @@ select[multiple] { height: auto; }
             tbody.innerHTML += `
                 <tr>
                     <td>${log.data.split('-').reverse().join('/')}</td>
-                    <td>${log.atividade} ${log.obs ? `<br><small style="color:#b8a8bc">Obs: ${log.obs}</small>` : ''} ${!log.synced ? '<br><small style="color:#e8a33d;">⏳ não sincronizado</small>' : ''}</td>
+                    <td>${log.atividade} ${log.obs ? `<br><small style="color:var(--muted)">Obs: ${log.obs}</small>` : ''} ${!log.synced ? '<br><small style="color:var(--warn);">⏳ não sincronizado</small>' : ''}</td>
                     <td><strong>${log.pontos}</strong></td>
                     <td><button class="delete-btn" onclick="deletarLog(${log.id})">X</button></td>
                 </tr>`;
@@ -597,7 +1008,7 @@ select[multiple] { height: auto; }
         bancoDadosAtivos().sort((a,b) => a.nome.localeCompare(b.nome)).forEach(item => {
             tbody.innerHTML += `
                 <tr>
-                    <td>${item.nome} ${!item.synced ? '<br><small style="color:#e8a33d;">⏳ não sincronizado</small>' : ''}</td>
+                    <td>${item.nome} ${!item.synced ? '<br><small style="color:var(--warn);">⏳ não sincronizado</small>' : ''}</td>
                     <td><strong>${item.pontos}</strong></td>
                     <td><span class="badge">${item.tec}</span></td>
                     <td>
@@ -666,7 +1077,7 @@ select[multiple] { height: auto; }
         const cont = document.getElementById('listaMeses');
         const meses = getMesesDisponiveis();
         if (meses.length === 0) {
-            cont.innerHTML = '<p style="color:#b8a8bc;">Nenhum lançamento registado ainda.</p>';
+            cont.innerHTML = '<p style="color:var(--muted);">Nenhum lançamento registado ainda.</p>';
             return;
         }
         cont.innerHTML = meses.map(ym => {
@@ -723,12 +1134,24 @@ select[multiple] { height: auto; }
         if (!meses) return;
         const metrica = document.getElementById('metricaGrafico').value;
         const dados = dadosPorMes(meses);
+        ultimoGrafico = { dados, metrica };
+        graficoDesatualizado = false;
         desenharGrafico(dados, metrica);
     }
 
-    const CORES_GRAFICO_TELA = { eixo: '#6b5a73', barra: '#ff7518', texto: '#f3e9da' };
-    const CORES_GRAFICO_IMPRESSAO = { eixo: '#999999', barra: '#e8720c', texto: '#333333' };
+    // Paleta do gráfico no PDF: fixa, de impressão (barras azuis em fundo branco),
+    // não importa o tema escolhido na tela — papel não "vira escuro".
+    const CORES_GRAFICO_IMPRESSAO = { eixo: '#cccccc', barra: '#0056b3', texto: '#333333' };
 
+    // Na tela o gráfico acompanha o tema. Se o motor de temas não estiver
+    // disponível por qualquer motivo, usa a paleta original.
+    function coresGraficoTela() {
+        if (window.TemaApp && typeof window.TemaApp.coresGrafico === 'function') return window.TemaApp.coresGrafico();
+        return CORES_GRAFICO_IMPRESSAO;
+    }
+
+    // Desenha o gráfico num contexto qualquer (tela ou PDF) — o mesmo desenho
+    // pros dois, só muda a paleta.
     function desenharGraficoEm(ctx, wCss, hCss, dados, metrica, cores) {
         ctx.clearRect(0, 0, wCss, hCss);
 
@@ -774,8 +1197,26 @@ select[multiple] { height: auto; }
         canvas.height = hCss * dpr;
         const ctx = canvas.getContext('2d');
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        desenharGraficoEm(ctx, wCss, hCss, dados, metrica, CORES_GRAFICO_TELA);
+        desenharGraficoEm(ctx, wCss, hCss, dados, metrica, coresGraficoTela());
     }
+
+    // O que está desenhado na tela agora. Serve pra (1) redesenhar com as cores
+    // novas quando a pessoa troca o tema e (2) o PDF mostrar o MESMO gráfico.
+    let ultimoGrafico = null;
+    let graficoDesatualizado = false;   // o tema mudou com a aba Relatórios escondida
+
+    function redesenharGraficoSePreciso() {
+        if (!ultimoGrafico) return;
+        const canvas = document.getElementById('canvasComparativo');
+        if (!canvas) return;
+        if (canvas.clientWidth > 0) {
+            graficoDesatualizado = false;
+            desenharGrafico(ultimoGrafico.dados, ultimoGrafico.metrica);
+        } else {
+            graficoDesatualizado = true;   // aba escondida: redesenha quando ela abrir
+        }
+    }
+    window.addEventListener('tema-aplicado', redesenharGraficoSePreciso);
 
     // ---------- Exportar CSV (planilha) ----------
     function gerarConteudoCSV(dados) {
@@ -909,8 +1350,20 @@ select[multiple] { height: auto; }
                     const ctxEmbed = canvasEmbed.getContext('2d');
                     ctxEmbed.fillStyle = '#ffffff';
                     ctxEmbed.fillRect(0, 0, larguraEmbed, alturaEmbed);
-                    const metricaAtual = document.getElementById('metricaGrafico').value;
-                    desenharGraficoEm(ctxEmbed, larguraEmbed, alturaEmbed, dados, metricaAtual, CORES_GRAFICO_IMPRESSAO);
+                    if (ultimoGrafico) {
+                        // O PDF é papel: sempre com a paleta de impressão (barras azuis em fundo
+                        // branco), mesmo com a tela num tema escuro. Redesenha o MESMO gráfico que
+                        // está na tela, no mesmo tamanho dele, e reduz como sempre foi feito.
+                        const dprPdf = window.devicePixelRatio || 1;
+                        const wPdf = canvas.clientWidth || 300, hPdf = 220;
+                        const canvasPdf = document.createElement('canvas');
+                        canvasPdf.width = wPdf * dprPdf;
+                        canvasPdf.height = hPdf * dprPdf;
+                        const ctxPdf = canvasPdf.getContext('2d');
+                        ctxPdf.setTransform(dprPdf, 0, 0, dprPdf, 0, 0);
+                        desenharGraficoEm(ctxPdf, wPdf, hPdf, ultimoGrafico.dados, ultimoGrafico.metrica, CORES_GRAFICO_IMPRESSAO);
+                        ctxEmbed.drawImage(canvasPdf, 0, 0, larguraEmbed, alturaEmbed);
+                    }
                     const imgData = canvasEmbed.toDataURL('image/jpeg', 0.75);
                     doc.addImage(imgData, 'JPEG', 14, y, 180, 80);
                 } catch (e) { /* se falhar, segue sem o gráfico */ }
@@ -1549,7 +2002,7 @@ select[multiple] { height: auto; }
         area.innerHTML = `
             ${temGoogleDisponivel ? `
                 <button type="button" class="btn-secundario" onclick="handleEntrarComGoogleGate()">🔵 Entrar com Google</button>
-                <p style="text-align:center; font-size:0.8rem; color:#9d8ca2; margin:10px 0;">ou entre com e-mail e senha:</p>
+                <p style="text-align:center; font-size:0.8rem; color:var(--muted-soft); margin:10px 0;">ou entre com e-mail e senha:</p>
             ` : ''}
             <div class="form-group"><label>E-mail:</label><input type="email" id="gateEmail"></div>
             <div class="form-group"><label>Senha:</label><input type="password" id="gateSenha"></div>
@@ -1557,7 +2010,7 @@ select[multiple] { height: auto; }
                 <button type="button" onclick="handleEntrarGate()">Entrar</button>
                 <button type="button" class="btn-secundario" onclick="handleCadastrarGate()">Criar Conta</button>
             </div>
-            <p style="text-align:center; margin-top:10px;"><a href="#" onclick="handleEsqueciSenhaGate(); return false;" style="color:#ff9248; font-size:0.85rem;">Esqueci minha senha</a></p>`;
+            <p style="text-align:center; margin-top:10px;"><a href="#" onclick="handleEsqueciSenhaGate(); return false;" style="color:var(--accent); font-size:0.85rem;">Esqueci minha senha</a></p>`;
     }
 
     // Decodifica o "payload" (parte do meio) de um JWT, sem verificar
@@ -1717,7 +2170,7 @@ select[multiple] { height: auto; }
         if (!area) return;
 
         if (!sbConfigurado()) {
-            area.innerHTML = `<p style="color:#e8a33d;">A sincronização em nuvem ainda não foi configurada neste app (falta preencher SUPABASE_URL / SUPABASE_ANON_KEY no código-fonte). O app continua funcionando 100% offline normalmente.</p>`;
+            area.innerHTML = `<p style="color:var(--warn);">A sincronização em nuvem ainda não foi configurada neste app (falta preencher SUPABASE_URL / SUPABASE_ANON_KEY no código-fonte). O app continua funcionando 100% offline normalmente.</p>`;
             return;
         }
 
@@ -1727,7 +2180,7 @@ select[multiple] { height: auto; }
             area.innerHTML = `
                 ${temGoogleDisponivel ? `
                     <button type="button" class="btn-secundario" onclick="handleEntrarComGoogleConta()">🔵 Entrar com Google</button>
-                    <p style="text-align:center; font-size:0.8rem; color:#9d8ca2; margin:10px 0;">ou entre com e-mail e senha:</p>
+                    <p style="text-align:center; font-size:0.8rem; color:var(--muted-soft); margin:10px 0;">ou entre com e-mail e senha:</p>
                 ` : ''}
                 <div class="form-group"><label>E-mail:</label><input type="email" id="contaEmail"></div>
                 <div class="form-group"><label>Senha:</label><input type="password" id="contaSenha"></div>
@@ -1735,23 +2188,23 @@ select[multiple] { height: auto; }
                     <button type="button" onclick="handleEntrarConta()">Entrar</button>
                     <button type="button" class="btn-secundario" onclick="handleCadastrarConta()">Criar Conta</button>
                 </div>
-                <p style="text-align:center; margin:8px 0;"><a href="#" onclick="handleEsqueciSenhaConta(); return false;" style="color:#ff9248; font-size:0.85rem;">Esqueci minha senha</a></p>
+                <p style="text-align:center; margin:8px 0;"><a href="#" onclick="handleEsqueciSenhaConta(); return false;" style="color:var(--accent); font-size:0.85rem;">Esqueci minha senha</a></p>
                 <p class="aviso-salvamento">Sem login, o app continua funcionando normalmente — só não sincroniza com outros aparelhos.</p>`;
         } else {
             const pendentes = logs.filter(l => !l.synced).length + bancoDados.filter(b => !b.synced).length;
             const ultimaSync = localStorage.getItem('sb_ultima_sync');
             area.innerHTML = `
                 <p>Logado como <strong>${sessao.email}</strong></p>
-                <p style="font-size:0.85rem; color:#b8a8bc;">
+                <p style="font-size:0.85rem; color:var(--muted);">
                     ${sincronizando ? '🔄 Sincronizando...' : (pendentes > 0 ? `⏳ ${pendentes} item(ns) pendente(s)` : '✅ Tudo sincronizado')}<br>
                     ${ultimaSync ? 'Última sincronização: ' + new Date(parseInt(ultimaSync)).toLocaleString('pt-BR') : 'Ainda não sincronizou'}
-                    ${!navigator.onLine ? '<br><span style="color:#ff6b6b;">Sem conexão com a internet agora</span>' : ''}
+                    ${!navigator.onLine ? '<br><span style="color:var(--danger-text);">Sem conexão com a internet agora</span>' : ''}
                 </p>
                 <div class="btn-linha">
                     <button type="button" onclick="tentarSincronizar()">🔄 Sincronizar Agora</button>
                     <button type="button" class="btn-secundario" onclick="sairConta()">Sair</button>
                 </div>
-                ${ultimoErroSync ? `<p style="color:#ff6b6b; font-size:0.82rem; margin-top:10px; background:#2e1416; padding:8px; border-radius:5px;">❌ Erro na última sincronização: ${ultimoErroSync}</p>` : ''}`;
+                ${ultimoErroSync ? `<p style="color:var(--danger-text); font-size:0.82rem; margin-top:10px; background:var(--danger-bg); padding:8px; border-radius:5px;">❌ Erro na última sincronização: ${ultimoErroSync}</p>` : ''}`;
         }
     }
 
@@ -1768,7 +2221,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.6.4';
+    const APP_VERSAO_ATUAL = '1.7.0';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
@@ -1854,7 +2307,7 @@ select[multiple] { height: auto; }
         if (document.getElementById('avisoAtualizacaoDisponivel')) return; // não duplica
         const aviso = document.createElement('div');
         aviso.id = 'avisoAtualizacaoDisponivel';
-        aviso.style.cssText = 'position:fixed; bottom:64px; left:10px; right:10px; background:#c1440e; color:#fff; padding:12px 14px; border-radius:8px; font-size:0.82rem; z-index:9999; box-shadow:0 2px 10px rgba(0,0,0,0.35);';
+        aviso.style.cssText = 'position:fixed; bottom:64px; left:10px; right:10px; background:var(--primary); color:var(--on-primary); padding:12px 14px; border-radius:8px; font-size:0.82rem; z-index:9999; box-shadow:0 2px 10px rgba(0,0,0,0.35);';
         aviso.innerHTML = `📦 Nova versão (${versao}) baixada — será aplicada na próxima vez que você abrir o app. <span style="float:right; cursor:pointer; padding-left:10px;" onclick="document.getElementById('avisoAtualizacaoDisponivel').remove()">✕</span>`;
         document.body.appendChild(aviso);
     }
@@ -1897,18 +2350,18 @@ select[multiple] { height: auto; }
 </script>
 
 
-<div id="telaLoginObrigatorio" style="display:none; position:fixed; inset:0; background:#160f1a; z-index:9998; overflow-y:auto; padding:24px 16px;">
+<div id="telaLoginObrigatorio" style="display:none; position:fixed; inset:0; background:var(--overlay-bg); z-index:9998; overflow-y:auto; padding:24px 16px;">
     <div style="max-width:400px; margin:60px auto 0;">
-        <h2 style="text-align:center; color:#ff9248; margin-bottom:4px;">Produção vs Pontuação</h2>
-        <p style="text-align:center; color:#b8a8bc; font-size:0.85rem; margin-bottom:24px;">Entre para continuar</p>
+        <h2 style="text-align:center; color:var(--accent); margin-bottom:4px;">Produção vs Pontuação</h2>
+        <p style="text-align:center; color:var(--muted); font-size:0.85rem; margin-bottom:24px;">Entre para continuar</p>
         <div id="areaLoginObrigatorio" class="card"></div>
     </div>
 </div>
 
-<div id="telaNovaSenha" style="display:none; position:fixed; inset:0; background:#160f1a; z-index:9999; overflow-y:auto; padding:24px 16px;">
+<div id="telaNovaSenha" style="display:none; position:fixed; inset:0; background:var(--overlay-bg); z-index:9999; overflow-y:auto; padding:24px 16px;">
     <div style="max-width:400px; margin:60px auto 0;">
-        <h2 style="text-align:center; color:#ff9248; margin-bottom:4px;">Definir Nova Senha</h2>
-        <p style="text-align:center; color:#b8a8bc; font-size:0.85rem; margin-bottom:24px;">Escolha uma nova senha pra sua conta</p>
+        <h2 style="text-align:center; color:var(--accent); margin-bottom:4px;">Definir Nova Senha</h2>
+        <p style="text-align:center; color:var(--muted); font-size:0.85rem; margin-bottom:24px;">Escolha uma nova senha pra sua conta</p>
         <div class="card">
             <div class="form-group"><label>Nova senha:</label><input type="password" id="novaSenhaInput"></div>
             <div class="form-group"><label>Confirmar nova senha:</label><input type="password" id="confirmarSenhaInput"></div>
@@ -1918,7 +2371,7 @@ select[multiple] { height: auto; }
 </div>
 
 <div id="modalConfirmacao" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; align-items:center; justify-content:center; padding:20px;">
-    <div style="background:#241a29; border-radius:10px; padding:20px; max-width:340px; width:100%; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+    <div style="background:var(--card); border-radius:10px; padding:20px; max-width:340px; width:100%; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
         <p id="modalConfirmacaoTexto" style="margin:0 0 16px; font-size:0.95rem; line-height:1.4;"></p>
         <div class="btn-linha">
             <button type="button" onclick="modalConfirmacaoResponder(true)">Confirmar</button>
@@ -1928,11 +2381,223 @@ select[multiple] { height: auto; }
 </div>
 
 <div id="modalMensagem" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10001; align-items:center; justify-content:center; padding:20px;">
-    <div style="background:#241a29; border-radius:10px; padding:20px; max-width:340px; width:100%; max-height:80vh; overflow-y:auto; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+    <div style="background:var(--card); border-radius:10px; padding:20px; max-width:340px; width:100%; max-height:80vh; overflow-y:auto; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
         <p id="modalMensagemTexto" style="margin:0 0 16px; font-size:0.9rem; line-height:1.4; white-space:pre-wrap;"></p>
         <button type="button" onclick="document.getElementById('modalMensagem').classList.remove('aberto')">OK</button>
     </div>
 </div>
+
+<div id="modalCor" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10002; align-items:center; justify-content:center; padding:20px;">
+    <div class="caixa-cor">
+        <h3 id="modalCorTitulo">Cor</h3>
+        <p id="modalCorDesc" class="aviso-salvamento" style="margin-top:2px;"></p>
+        <div class="cor-topo">
+            <div id="corPrevia"></div>
+            <input type="text" id="corHex" maxlength="7" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Código da cor em hexadecimal">
+        </div>
+        <div id="paletaCores" class="paleta"></div>
+        <div class="rotulo-slider">Matiz</div>
+        <input type="range" class="slider-cor" id="sliderH" min="0" max="360" step="1" style="background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);">
+        <div class="rotulo-slider">Intensidade</div>
+        <input type="range" class="slider-cor" id="sliderS" min="0" max="100" step="1">
+        <div class="rotulo-slider">Claridade</div>
+        <input type="range" class="slider-cor" id="sliderL" min="0" max="100" step="1">
+        <div id="corAvisos"></div>
+        <div class="btn-linha">
+            <button type="button" id="btnCorAplicar">Aplicar</button>
+            <button type="button" class="btn-secundario" id="btnCorCancelar">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==================================================================
+    // TELA DE APARÊNCIA (aba Conta > Aparência)
+    // Este bloco fica DEPOIS dos modais de propósito: aqui os elementos já
+    // existem no documento. (O script principal, lá em cima, roda antes
+    // deles existirem — por isso nada daqui mora lá.)
+    // O seletor de cor é próprio (paleta + controles de matiz/intensidade/
+    // claridade + código hex) porque o <input type="color"> do navegador
+    // depende de um seletor nativo que o WebView não garante abrir.
+    // ==================================================================
+    (function () {
+        'use strict';
+        const T = window.TemaApp;
+        const $ = id => document.getElementById(id);
+        const modal = $('modalCor');
+        if (!T || !$('cardAparencia') || !modal) return;
+
+        const PAPEIS = [
+            { id: 'bg', rotulo: 'Fundo do app', desc: 'Atrás dos cartões' },
+            { id: 'card', rotulo: 'Cartões', desc: 'Caixas, formulários e janelas' },
+            { id: 'text', rotulo: 'Texto', desc: 'Títulos e textos principais' },
+            { id: 'primary', rotulo: 'Cor principal', desc: 'Cabeçalho e botões' },
+            { id: 'accent', rotulo: 'Destaque', desc: 'Links, títulos e aba ativa' },
+            { id: 'success', rotulo: 'Botão Salvar', desc: 'Salvar lançamento' },
+            { id: 'danger', rotulo: 'Botão Excluir', desc: 'Excluir e avisos de erro' }
+        ];
+        const PALETA = (function () {
+            const lista = ['#000000', '#222222', '#444444', '#666666', '#888888', '#aaaaaa', '#cccccc', '#eeeeee', '#ffffff'];
+            [30, 45, 62, 85].forEach(luz => {
+                [0, 28, 50, 100, 150, 190, 220, 270, 320].forEach(h => lista.push(T.hslParaHex(h, 70, luz)));
+            });
+            return lista;
+        })();
+
+        let papelAberto = null;      // qual cor está sendo editada
+        let fotoAntes = null;        // estado antes de abrir (pra Cancelar desfazer)
+        let chavesCongeladas = [];   // variáveis fixadas no modal enquanto ele está aberto
+
+        // ---------------- cartão na aba Conta ----------------
+        function miniatura(v) {
+            return '<span class="mini" style="background:' + v['--bg'] + '">' +
+                '<span class="mini-topo" style="background:' + v['--primary'] + '"></span>' +
+                '<span class="mini-card" style="background:' + v['--card'] + '">' +
+                '<i style="background:' + v['--text'] + '"></i>' +
+                '<i style="background:' + v['--accent'] + '"></i></span></span>';
+        }
+        function chip(id, nome, ativo) {
+            return '<button type="button" class="chip-tema' + (ativo ? ' ativo' : '') + '" data-tema="' + id +
+                '" aria-pressed="' + (ativo ? 'true' : 'false') + '">' +
+                miniatura(T.variaveisDe(id)) + '<span class="chip-nome">' + nome + '</span></button>';
+        }
+        function renderizar() {
+            const ativo = T.ativo();
+            let html = T.TEMAS.map(t => chip(t.id, t.nome, ativo === t.id)).join('');
+            if (T.temCustom()) html += chip('custom', 'Personalizado', ativo === 'custom');
+            $('temasProntos').innerHTML = html;
+
+            const v = T.variaveisAtuais(), base = T.baseAtual();
+            $('linhasCores').innerHTML = PAPEIS.map(p => {
+                const cor = p.id === 'accent' ? v['--accent'] : base[p.id];
+                const nota = (p.id === 'accent' && base.accent === null) ? 'Acompanha a cor principal' : p.desc;
+                return '<button type="button" class="linha-cor" data-papel="' + p.id + '" aria-label="Alterar ' + p.rotulo + '">' +
+                    '<span class="amostra" style="background:' + cor + '"></span>' +
+                    '<span class="info"><b>' + p.rotulo + '</b><small>' + nota + '</small></span>' +
+                    '<code>' + cor + '</code></button>';
+            }).join('');
+            $('chkAcentoAuto').checked = base.accent === null;
+
+            $('avisosContraste').innerHTML = T.diagnostico().map(a =>
+                '⚠ ' + a.texto + ': contraste ' + a.razao + ':1 (o ideal é ' + a.min + ':1 ou mais).').join('<br>');
+        }
+
+        $('temasProntos').addEventListener('click', e => {
+            const b = e.target.closest('[data-tema]');
+            if (!b) return;
+            if (T.escolher(b.getAttribute('data-tema'))) T.salvar();
+        });
+        $('linhasCores').addEventListener('click', e => {
+            const b = e.target.closest('[data-papel]');
+            if (b) abrirSeletor(b.getAttribute('data-papel'));
+        });
+        $('chkAcentoAuto').addEventListener('change', function () {
+            T.acentoAuto(this.checked);
+            T.salvar();
+        });
+        $('btnRestaurarOriginal').addEventListener('click', () => {
+            T.escolher('original');
+            T.salvar();
+        });
+        window.addEventListener('tema-aplicado', renderizar);
+
+        // ---------------- seletor de cor ----------------
+        $('paletaCores').innerHTML = PALETA.map(c =>
+            '<button type="button" style="background:' + c + '" data-cor="' + c + '" aria-label="Cor ' + c + '"></button>').join('');
+
+        function congelarVisual() {
+            // Enquanto o seletor está aberto o app atrás muda ao vivo, mas a própria
+            // janela do seletor fica com as cores de antes — assim ela nunca fica
+            // ilegível por causa da cor que a pessoa está testando.
+            const v = T.variaveisAtuais();
+            chavesCongeladas = Object.keys(v);
+            chavesCongeladas.forEach(k => modal.style.setProperty(k, v[k]));
+        }
+        function liberarVisual() {
+            chavesCongeladas.forEach(k => modal.style.removeProperty(k));
+            chavesCongeladas = [];
+        }
+        function corAtualDoPapel(papel) {
+            return papel === 'accent' ? T.variaveisAtuais()['--accent'] : T.baseAtual()[papel];
+        }
+        function avisosDoSeletor() {
+            const lista = T.pares().filter(p => p.papeis.indexOf(papelAberto) >= 0);
+            const ruins = lista.filter(p => !p.ok);
+            $('corAvisos').innerHTML = ruins.length
+                ? ruins.map(p => '<div class="ruim">⚠ ' + p.texto + ': ' + p.razao + ':1 (ideal ' + p.min + ':1 ou mais)</div>').join('')
+                : '<div class="bom">✓ Legível com as outras cores do tema.</div>';
+        }
+        // Atualiza prévia, campo hex, controles e degradês a partir de uma cor.
+        function mostrar(hex, opcoes) {
+            opcoes = opcoes || {};
+            $('corPrevia').style.background = hex;
+            if (!opcoes.manterCampoHex) { $('corHex').value = hex; $('corHex').classList.remove('invalido'); }
+            const hsl = T.hexParaHsl(hex);
+            // Em cinza/preto/branco o matiz não existe: mantém o que a pessoa já tinha escolhido.
+            const matiz = (hsl.s === 0 || hsl.l === 0 || hsl.l === 100) ? +$('sliderH').value : hsl.h;
+            if (!opcoes.daSlider) {
+                $('sliderH').value = matiz;
+                $('sliderS').value = hsl.s;
+                $('sliderL').value = hsl.l;
+            }
+            const H = +$('sliderH').value, S = +$('sliderS').value, L = +$('sliderL').value;
+            $('sliderS').style.background = 'linear-gradient(to right, ' + T.hslParaHex(H, 0, L) + ', ' + T.hslParaHex(H, 100, L) + ')';
+            $('sliderL').style.background = 'linear-gradient(to right, #000000, ' + T.hslParaHex(H, S, 50) + ', #ffffff)';
+        }
+        function aplicarCor(hex) {
+            T.definirCor(papelAberto, hex);
+            avisosDoSeletor();
+        }
+        function abrirSeletor(papel) {
+            const info = PAPEIS.filter(p => p.id === papel)[0];
+            if (!info) return;
+            papelAberto = papel;
+            fotoAntes = T.snapshot();
+            congelarVisual();
+            $('modalCorTitulo').textContent = info.rotulo;
+            $('modalCorDesc').textContent = info.desc;
+            mostrar(corAtualDoPapel(papel));
+            avisosDoSeletor();
+            modal.classList.add('aberto');
+        }
+        function fechar() {
+            modal.classList.remove('aberto');
+            liberarVisual();
+            papelAberto = null;
+            fotoAntes = null;
+        }
+
+        $('paletaCores').addEventListener('click', e => {
+            const b = e.target.closest('[data-cor]');
+            if (!b || !papelAberto) return;
+            const hex = b.getAttribute('data-cor');
+            mostrar(hex);
+            aplicarCor(hex);
+        });
+        ['sliderH', 'sliderS', 'sliderL'].forEach(id => {
+            $(id).addEventListener('input', () => {
+                const hex = T.hslParaHex(+$('sliderH').value, +$('sliderS').value, +$('sliderL').value);
+                mostrar(hex, { daSlider: true });
+                aplicarCor(hex);
+            });
+        });
+        $('corHex').addEventListener('input', function () {
+            const texto = this.value.trim();
+            const hex = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.test(texto) ? T.normalizarHex(texto) : null;
+            if (!hex) { this.classList.add('invalido'); return; }   // ainda digitando: não aplica nada
+            this.classList.remove('invalido');
+            mostrar(hex, { manterCampoHex: true });
+            aplicarCor(hex);
+        });
+        $('btnCorAplicar').addEventListener('click', () => { T.salvar(); fechar(); });
+        $('btnCorCancelar').addEventListener('click', () => { T.restaurar(fotoAntes); fechar(); });
+        modal.addEventListener('click', e => {
+            if (e.target === modal) { T.restaurar(fotoAntes); fechar(); }   // toque fora = cancelar
+        });
+
+        renderizar();
+    })();
+</script>
 
 
 
