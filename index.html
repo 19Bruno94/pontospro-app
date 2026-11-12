@@ -141,6 +141,37 @@ select[multiple] { height: auto; }
         html.ios input[type="date"] { -webkit-appearance: none; appearance: none; min-height: 42px; text-align: left; }
         html.ios input[type="date"]::-webkit-date-and-time-value { text-align: left; }
         html.ios button, html.ios .nav-btn, html.ios a { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+        /* ---- v1.9.0: marca d'água do desenvolvedor (faixa discreta no topo do menu de baixo) ---- */
+        body { padding-bottom: 83px; }
+        .nav-bar { padding-top: 13px; }
+        .marca-dev { position: absolute; top: 0; left: 0; right: 0; height: 13px; line-height: 14px; text-align: center; font-size: 0.62rem; letter-spacing: 0.03em; color: var(--muted); opacity: 0.8; pointer-events: none; user-select: none; -webkit-user-select: none; white-space: nowrap; overflow: hidden; }
+        .marca-dev-gate { text-align: center; font-size: 0.7rem; letter-spacing: 0.03em; color: var(--muted); opacity: 0.8; margin: 22px 0 6px; user-select: none; -webkit-user-select: none; }
+        html.ios body { padding-bottom: calc(83px + env(safe-area-inset-bottom, 0px)); }
+        html.ios .nav-bar { padding-top: 13px; }
+
+        /* ---- v1.9.0: Conta > Admin (só aparece para administradores) ---- */
+        .sub-abas { display: flex; gap: 8px; margin-bottom: 12px; }
+        .sub-aba { flex: 1; margin: 0; background: var(--panel); color: var(--text); border: 2px solid var(--divider); font-weight: bold; }
+        .sub-aba:hover { background: var(--panel); }
+        .sub-aba.ativa { background: var(--card); color: var(--accent); border-color: var(--accent); }
+        #tab-conta.modo-admin > .card { display: none; }
+        #painelAdmin { display: none; }
+        #tab-conta.modo-admin > #painelAdmin { display: block; }
+        .admin-filtro { cursor: pointer; border: 2px solid transparent; padding: 12px 8px; user-select: none; -webkit-user-select: none; }
+        .admin-filtro.sel { border-color: var(--accent); }
+        .admin-filtro h3 { font-size: 1.4rem; }
+        .admin-filtro p { font-size: 0.72rem; }
+        .admin-conta { padding: 12px 14px; }
+        .admin-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+        .admin-email { overflow-wrap: anywhere; font-size: 0.92rem; }
+        .admin-voce { color: var(--muted); font-weight: normal; }
+        .admin-badge { flex: none; display: inline-flex; align-items: center; gap: 5px; background: var(--panel2); color: var(--text); border-radius: 12px; padding: 3px 9px; font-size: 0.74rem; font-weight: bold; white-space: nowrap; }
+        .admin-badge i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+        .admin-linhas { display: flex; flex-direction: column; gap: 2px; font-size: 0.8rem; color: var(--muted-strong); }
+        .admin-legenda { margin-top: 10px; font-size: 0.78rem; color: var(--muted); }
+        .admin-legenda summary { cursor: pointer; font-weight: bold; }
+        .admin-legenda p { margin-top: 6px; line-height: 1.5; }
     </style>
     <script>
     // ==================================================================
@@ -678,9 +709,14 @@ select[multiple] { height: auto; }
     </div>
 
     <div id="tab-conta" class="tab-content">
+        <div id="contaSubAbas" class="sub-abas" style="display:none">
+            <button type="button" id="subAbaConta" class="sub-aba ativa" onclick="abrirSubAbaConta('conta')">Minha conta</button>
+            <button type="button" id="subAbaAdmin" class="sub-aba" onclick="abrirSubAbaConta('admin')">👑 Admin</button>
+        </div>
         <div class="card">
             <h3>Conta e Sincronização na Nuvem</h3><br>
             <p style="font-size:0.85rem; color:var(--muted-strong);">O app funciona 100% offline sempre. Ao entrar numa conta, os dados também são guardados na nuvem e sincronizados automaticamente entre seus aparelhos quando houver internet.</p>
+            <p class="aviso-salvamento" style="margin:8px 0 12px;">Quem administra o app vê, de cada conta, só o e-mail, a data de cadastro, o último acesso e a quantidade de lançamentos. Nunca o conteúdo deles.</p>
             <div id="areaConta"><p style="color:var(--muted);">Carregando...</p></div>
         </div>
 
@@ -700,10 +736,31 @@ select[multiple] { height: auto; }
             <p id="indicadorVersao" style="font-size:0.9rem; color:var(--muted-strong);">v···</p>
             <button type="button" class="btn-secundario" onclick="verificarAtualizacaoManual()">🔄 Verificar Atualização</button>
         </div>
+        <div id="painelAdmin">
+            <div class="card">
+                <h3>👑 Quem está usando o app</h3><br>
+                <p class="aviso-salvamento" style="margin:0 0 12px;">Resumo de uso de cada conta: cadastro, último acesso e quantidade de lançamentos. O conteúdo dos lançamentos não aparece aqui.</p>
+                <div id="adminResumo" class="dashboard-grid"></div>
+                <div class="form-group" style="margin-top:14px;">
+                    <label for="adminLimiteDias">Considerar parado depois de:</label>
+                    <select id="adminLimiteDias" onchange="adminMudouLimite()">
+                        <option value="3">3 dias</option>
+                        <option value="7">7 dias</option>
+                        <option value="15">15 dias</option>
+                        <option value="30">30 dias</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-secundario" onclick="carregarPainelAdmin()">🔄 Atualizar</button>
+                <p id="adminAtualizadoEm" class="aviso-salvamento"></p>
+                <details class="admin-legenda"><summary>Como cada status é calculado</summary><p id="adminLegendaTexto"></p></details>
+            </div>
+            <div id="adminLista"></div>
+        </div>
     </div>
 </div>
 
 <div class="nav-bar">
+    <div class="marca-dev" aria-hidden="true">Desenvolvido por Bruno Bonfim</div>
     <button class="nav-btn active" onclick="switchTab('lancamento', this)">Lançamentos</button>
     <button class="nav-btn" onclick="switchTab('dashboard', this)">Dashboard</button>
     <button class="nav-btn" onclick="switchTab('servicos', this)">Config Serviços</button>
@@ -914,6 +971,7 @@ select[multiple] { height: auto; }
         } else if(tab === 'conta') {
             document.getElementById('app-title').innerText = "Conta e Sincronização";
             atualizarTelaConta();
+            ajustarTituloConta();
         }
     }
 
@@ -1647,7 +1705,7 @@ select[multiple] { height: auto; }
         catch (e) { return null; }
     }
     function salvarSessao(sessao) { localStorage.setItem('sb_sessao', JSON.stringify(sessao)); }
-    function limparSessao() { localStorage.removeItem('sb_sessao'); }
+    function limparSessao() { localStorage.removeItem('sb_sessao'); try { ocultarAdminAoSair(); } catch (e) {} }
     function estaLogado() { return !!getSessao(); }
 
     async function renovarTokenSeNecessario() {
@@ -1774,7 +1832,7 @@ select[multiple] { height: auto; }
             history.replaceState(null, '', window.location.pathname);
             mostrarMensagem('Senha alterada com sucesso! Pode fechar esta página e entrar no app com a nova senha.');
         } catch (e) {
-            mostrarMensagem(e.message);
+            mostrarMensagem(traduzirErroAuth(e));
         }
     }
 
@@ -1786,7 +1844,7 @@ select[multiple] { height: auto; }
             try {
                 await solicitarResetSenha(email);
                 mostrarMensagem('E-mail enviado! Verifique sua caixa de entrada (e o spam) e toque no link pra definir uma nova senha.');
-            } catch (e) { mostrarMensagem(e.message); }
+            } catch (e) { mostrarMensagem(traduzirErroAuth(e)); }
         });
     }
 
@@ -1798,7 +1856,7 @@ select[multiple] { height: auto; }
             try {
                 await solicitarResetSenha(email);
                 mostrarMensagem('E-mail enviado! Verifique sua caixa de entrada (e o spam) e toque no link pra definir uma nova senha.');
-            } catch (e) { mostrarMensagem(e.message); }
+            } catch (e) { mostrarMensagem(traduzirErroAuth(e)); }
         });
     }
 
@@ -2035,6 +2093,7 @@ select[multiple] { height: auto; }
     function esconderTelaLoginObrigatorio() {
         desbloqueadoNestaSessao = true;
         document.getElementById('telaLoginObrigatorio').style.display = 'none';
+        try { verificarAdmin(); } catch (e) {}
     }
 
     function renderizarLoginObrigatorio() {
@@ -2054,7 +2113,8 @@ select[multiple] { height: auto; }
                 <button type="button" onclick="handleEntrarGate()">Entrar</button>
                 <button type="button" class="btn-secundario" onclick="handleCadastrarGate()">Criar Conta</button>
             </div>
-            <p style="text-align:center; margin-top:10px;"><a href="#" onclick="handleEsqueciSenhaGate(); return false;" style="color:var(--accent); font-size:0.85rem;">Esqueci minha senha</a></p>`;
+            <p style="text-align:center; margin-top:10px;"><a href="#" onclick="handleEsqueciSenhaGate(); return false;" style="color:var(--accent); font-size:0.85rem;">Esqueci minha senha</a></p>
+            <p class="aviso-salvamento" style="text-align:center;">Ao criar a conta, quem administra o app passa a ver seu e-mail, seu último acesso e quantos lançamentos você fez (nunca o conteúdo).</p>`;
     }
 
     // Decodifica o "payload" (parte do meio) de um JWT, sem verificar
@@ -2102,7 +2162,7 @@ select[multiple] { height: auto; }
             esconderTelaLoginObrigatorio();
             atualizarTelaConta();
             tentarSincronizar();
-        } catch (e) { mostrarMensagem(e.message); }
+        } catch (e) { mostrarMensagem(traduzirErroAuth(e)); }
     }
 
     async function handleCadastrarGate() {
@@ -2113,13 +2173,17 @@ select[multiple] { height: auto; }
         try {
             const r = await cadastrarConta(email, senha);
             if (!r.access_token) {
-                mostrarMensagem('Conta criada! Verifique seu e-mail para confirmar antes de entrar (depende da configuração do projeto Supabase).');
+                if (Array.isArray(r.identities) && r.identities.length === 0) {
+                    mostrarMensagem('Este e-mail já tem conta. Toque em Entrar (ou em "Esqueci minha senha", se não lembrar a senha).');
+                } else {
+                    mostrarMensagem('Conta criada! Falta só confirmar seu e-mail: abra a mensagem que enviamos (olhe também o spam), toque no link de confirmar e depois volte aqui e toque em Entrar.');
+                }
             } else {
                 esconderTelaLoginObrigatorio();
                 atualizarTelaConta();
                 tentarSincronizar();
             }
-        } catch (e) { mostrarMensagem(e.message); }
+        } catch (e) { mostrarMensagem(traduzirErroAuth(e)); }
     }
 
     function handleEntrarComDigitalGate() {
@@ -2147,7 +2211,7 @@ select[multiple] { height: auto; }
             await entrarConta(email, senha);
             atualizarTelaConta();
             tentarSincronizar();
-        } catch (e) { mostrarMensagem(e.message); }
+        } catch (e) { mostrarMensagem(traduzirErroAuth(e)); }
     }
 
     async function handleCadastrarConta() {
@@ -2158,12 +2222,16 @@ select[multiple] { height: auto; }
         try {
             const r = await cadastrarConta(email, senha);
             if (!r.access_token) {
-                mostrarMensagem('Conta criada! Verifique seu e-mail para confirmar antes de entrar (depende da configuração do projeto Supabase).');
+                if (Array.isArray(r.identities) && r.identities.length === 0) {
+                    mostrarMensagem('Este e-mail já tem conta. Toque em Entrar (ou em "Esqueci minha senha", se não lembrar a senha).');
+                } else {
+                    mostrarMensagem('Conta criada! Falta só confirmar seu e-mail: abra a mensagem que enviamos (olhe também o spam), toque no link de confirmar e depois volte aqui e toque em Entrar.');
+                }
             } else {
                 atualizarTelaConta();
                 tentarSincronizar();
             }
-        } catch (e) { mostrarMensagem(e.message); }
+        } catch (e) { mostrarMensagem(traduzirErroAuth(e)); }
     }
 
     function biometriaDisponivelNoApp() {
@@ -2265,7 +2333,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.8.0';
+    const APP_VERSAO_ATUAL = '1.9.0';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
@@ -2350,7 +2418,7 @@ select[multiple] { height: auto; }
         if (document.getElementById('avisoAtualizacaoDisponivel')) return; // não duplica
         const aviso = document.createElement('div');
         aviso.id = 'avisoAtualizacaoDisponivel';
-        aviso.style.cssText = 'position:fixed; bottom:64px; left:10px; right:10px; background:var(--primary); color:var(--on-primary); padding:12px 14px; border-radius:8px; font-size:0.82rem; z-index:9999; box-shadow:0 2px 10px rgba(0,0,0,0.35);';
+        aviso.style.cssText = 'position:fixed; bottom:77px; left:10px; right:10px; background:var(--primary); color:var(--on-primary); padding:12px 14px; border-radius:8px; font-size:0.82rem; z-index:9999; box-shadow:0 2px 10px rgba(0,0,0,0.35);';
         aviso.innerHTML = `📦 Nova versão (${versao}) baixada — será aplicada na próxima vez que você abrir o app. <span style="float:right; cursor:pointer; padding-left:10px;" onclick="document.getElementById('avisoAtualizacaoDisponivel').remove()">✕</span>`;
         document.body.appendChild(aviso);
     }
@@ -2561,7 +2629,7 @@ select[multiple] { height: auto; }
         if (document.getElementById('avisoAtualizacaoDisponivel')) return; // não duplica
         const aviso = document.createElement('div');
         aviso.id = 'avisoAtualizacaoDisponivel';
-        aviso.style.cssText = 'position:fixed; bottom:calc(64px + env(safe-area-inset-bottom, 0px)); left:10px; right:10px; background:var(--primary); color:var(--on-primary); padding:12px 14px; border-radius:8px; font-size:0.82rem; z-index:9999; box-shadow:0 2px 10px rgba(0,0,0,0.35); display:flex; align-items:center; gap:10px;';
+        aviso.style.cssText = 'position:fixed; bottom:calc(77px + env(safe-area-inset-bottom, 0px)); left:10px; right:10px; background:var(--primary); color:var(--on-primary); padding:12px 14px; border-radius:8px; font-size:0.82rem; z-index:9999; box-shadow:0 2px 10px rgba(0,0,0,0.35); display:flex; align-items:center; gap:10px;';
         aviso.innerHTML = '<span style="flex:1;">📦 Nova versão (' + escaparHtml(versao) + ') disponível.</span>' +
             '<button type="button" id="btnAtualizarWeb" style="width:auto; margin:0; padding:6px 10px; background:var(--on-primary); color:var(--primary);">Atualizar agora</button>' +
             '<span id="btnFecharAvisoWeb" style="cursor:pointer; padding:4px;">✕</span>';
@@ -2600,6 +2668,260 @@ select[multiple] { height: auto; }
         });
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciarAjustesIOS); else iniciarAjustesIOS();
+
+    // ==================================================================
+    // v1.9.0 — MENSAGENS DE LOGIN EM PORTUGUÊS + PAINEL ADMIN
+    // O painel Admin só aparece para contas listadas na tabela app_admins
+    // do Supabase. Quem decide é o SERVIDOR (funções eh_admin() e
+    // admin_resumo_usuarios()); aqui o app só desenha a tela. Para quem
+    // não é admin nada muda. O painel mostra só sinais de uso (e-mail,
+    // cadastro, último acesso, quantidade de lançamentos), nunca o
+    // conteúdo dos lançamentos. Estado em "var" de propósito (sem risco
+    // de "let" usado antes de declarar, já que limparSessao() pode rodar cedo).
+    // ==================================================================
+
+    // Traduz erros em inglês do Supabase (e de rede) pra algo que o técnico entende.
+    function traduzirErroAuth(e) {
+        const bruto = (e && e.message) ? String(e.message) : String(e || '');
+        if (/failed to fetch|networkerror|load failed|network request failed/i.test(bruto)) return 'Sem conexão com a internet agora. Tente de novo quando tiver sinal.';
+        if (/invalid login credentials/i.test(bruto)) return 'E-mail ou senha incorretos.';
+        if (/email not confirmed/i.test(bruto)) return 'Você ainda não confirmou seu e-mail. Abra a mensagem de confirmação que enviamos (olhe também o spam), toque no link e depois volte aqui e toque em Entrar.';
+        if (/user already registered|already been registered/i.test(bruto)) return 'Este e-mail já tem conta. Toque em Entrar (ou em "Esqueci minha senha", se não lembrar a senha).';
+        if (/password should be at least|weak.password/i.test(bruto)) return 'A senha precisa ter pelo menos 6 caracteres.';
+        if (/rate limit|only request this after|too many requests/i.test(bruto)) return 'Muitas tentativas em pouco tempo. Espere 1 minuto e tente de novo.';
+        if (/unable to validate email address|email address ".*" is invalid/i.test(bruto)) return 'E-mail inválido. Confira se digitou certinho.';
+        return bruto;
+    }
+
+    var adminAtivo = false;       // esta conta é admin? (quem responde é o servidor)
+    var adminDados = null;        // lista de contas vinda do servidor (fica só na memória)
+    var adminCarregadoEm = 0;
+    var adminCarregando = false;
+    var adminErro = '';
+    var adminFiltro = 'todos';
+    var ADMIN_STATUS = {
+        ativo:         { rotulo: 'Ativo',                  cor: 'var(--success)' },
+        abre:          { rotulo: 'Só abre o app',          cor: 'var(--warn)' },
+        parado:        { rotulo: 'Parado',                 cor: 'var(--danger)' },
+        novo:          { rotulo: 'Novo',                   cor: 'var(--accent)' },
+        sem_confirmar: { rotulo: 'Não confirmou o e-mail', cor: 'var(--muted-soft)' }
+    };
+
+    function adminLimiteDias() {
+        let v = 7;
+        try { v = parseInt(localStorage.getItem('admin_limite_dias'), 10); } catch (e) {}
+        return [3, 7, 15, 30].indexOf(v) >= 0 ? v : 7;
+    }
+
+    // Chama uma função do Supabase (RPC) com o login desta conta.
+    async function chamarRpcAdmin(nome) {
+        const sessao = await renovarTokenSeNecessario();
+        if (!sessao) throw new Error('Sessão expirada, entre novamente.');
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${nome}`, {
+            method: 'POST',
+            headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${sessao.access_token}`, 'Content-Type': 'application/json' },
+            body: '{}'
+        });
+        const texto = await resp.text().catch(() => '');
+        if (!resp.ok) {
+            const err = new Error('HTTP ' + resp.status);
+            err.status = resp.status;
+            err.corpo = texto;
+            throw err;
+        }
+        return texto ? JSON.parse(texto) : null;
+    }
+
+    function definirAdmin(ok) {
+        adminAtivo = !!ok;
+        const barra = document.getElementById('contaSubAbas');
+        if (barra) barra.style.display = adminAtivo ? 'flex' : 'none';
+        if (!adminAtivo) {
+            adminDados = null;
+            adminErro = '';
+            abrirSubAbaConta('conta');
+        }
+    }
+
+    function ocultarAdminAoSair() {
+        try { localStorage.removeItem('admin_cache'); } catch (e) {}
+        definirAdmin(false);
+    }
+
+    // Pergunta ao servidor se esta conta é admin. Sem internet, vale o que o servidor disse da última vez.
+    async function verificarAdmin() {
+        try {
+            const s = getSessao();
+            if (!s) { definirAdmin(false); return; }
+            let cache = null;
+            try { cache = JSON.parse(localStorage.getItem('admin_cache') || 'null'); } catch (e) {}
+            if (cache && cache.uid === s.user_id && cache.ok === true) definirAdmin(true);
+            if (!navigator.onLine) return;
+            const resposta = await chamarRpcAdmin('eh_admin');
+            const ok = resposta === true;
+            try { localStorage.setItem('admin_cache', JSON.stringify({ uid: s.user_id, ok: ok })); } catch (e) {}
+            definirAdmin(ok);
+        } catch (e) { /* sem internet ou servidor fora do ar: fica como estava */ }
+    }
+
+    function ajustarTituloConta() {
+        const t = document.getElementById('app-title');
+        const aba = document.getElementById('tab-conta');
+        if (!t || !aba || !aba.classList.contains('active')) return;
+        t.innerText = aba.classList.contains('modo-admin') ? 'Administração' : 'Conta e Sincronização';
+    }
+
+    function abrirSubAbaConta(qual) {
+        const aba = document.getElementById('tab-conta');
+        if (!aba) return;
+        const admin = qual === 'admin' && adminAtivo;
+        aba.classList.toggle('modo-admin', admin);
+        const bConta = document.getElementById('subAbaConta');
+        const bAdmin = document.getElementById('subAbaAdmin');
+        if (bConta) bConta.classList.toggle('ativa', !admin);
+        if (bAdmin) bAdmin.classList.toggle('ativa', admin);
+        ajustarTituloConta();
+        if (admin) carregarPainelAdminSePreciso();
+    }
+
+    function carregarPainelAdminSePreciso() {
+        if (!adminDados || Date.now() - adminCarregadoEm > 60000) carregarPainelAdmin();
+        else renderizarPainelAdmin();
+    }
+
+    function mensagemErroAdmin(e) {
+        if (e && e.message === '__offline__') return 'Sem internet agora. O painel precisa de conexão pra buscar os dados.';
+        if (e && (e.status === 403 || /42501|Acesso negado/.test(e.corpo || ''))) return 'Esta conta não tem permissão de administrador.';
+        if (e && (e.status === 401 || /Sess[ãa]o expirada/.test(e.message || ''))) return 'Sessão expirada. Saia da conta e entre de novo.';
+        if (e instanceof TypeError) return 'Não consegui falar com o servidor agora. Tente de novo.';
+        return 'Erro ao carregar o painel (' + ((e && e.message) ? e.message : 'desconhecido') + ').';
+    }
+
+    async function carregarPainelAdmin() {
+        if (adminCarregando) return;
+        adminCarregando = true;
+        const info = document.getElementById('adminAtualizadoEm');
+        if (info) info.textContent = 'Atualizando...';
+        if (!adminDados) {
+            const lista = document.getElementById('adminLista');
+            if (lista) lista.innerHTML = '<div class="card"><p style="color:var(--muted);">Carregando...</p></div>';
+        }
+        try {
+            if (!navigator.onLine) throw new Error('__offline__');
+            const dados = await chamarRpcAdmin('admin_resumo_usuarios');
+            adminDados = Array.isArray(dados) ? dados : [];
+            adminCarregadoEm = Date.now();
+            adminErro = '';
+        } catch (e) {
+            adminErro = mensagemErroAdmin(e);
+        } finally {
+            adminCarregando = false;
+            renderizarPainelAdmin();
+        }
+    }
+
+    function adminMudouLimite() {
+        const sel = document.getElementById('adminLimiteDias');
+        if (sel) { try { localStorage.setItem('admin_limite_dias', sel.value); } catch (e) {} }
+        renderizarPainelAdmin();
+    }
+
+    function adminFiltrar(chave) {
+        adminFiltro = (adminFiltro === chave && chave !== 'todos') ? 'todos' : chave;
+        renderizarPainelAdmin();
+    }
+
+    // Status de cada conta. Ordem importa: a primeira regra que bater vale.
+    function adminClassificar(u, agora, dias) {
+        const lim = dias * 86400000;
+        const cad = Date.parse(u.cadastrado_em) || 0;
+        const login = u.ultimo_login ? (Date.parse(u.ultimo_login) || 0) : 0;
+        const ativ = u.ultima_atividade ? (Date.parse(u.ultima_atividade) || 0) : 0;
+        const total = Number(u.total_lancamentos) || 0;
+        if (!u.email_confirmado_em) return 'sem_confirmar';          // criou a conta mas não consegue entrar
+        if (ativ && agora - ativ <= lim) return 'ativo';             // lançou/alterou algo no período
+        if (!total && !ativ && agora - cad <= 3 * 86400000) return 'novo';   // conta recente: ainda não deu tempo
+        if (login && agora - login <= lim) return 'abre';            // entra no app mas não lança
+        return 'parado';
+    }
+
+    function adminDiasAtras(ts, agora) {
+        const a = new Date(agora); a.setHours(0, 0, 0, 0);
+        const b = new Date(ts);    b.setHours(0, 0, 0, 0);
+        return Math.round((a - b) / 86400000);
+    }
+    function adminQuando(ts, agora) {
+        if (!ts) return 'nunca';
+        const d = adminDiasAtras(ts, agora);
+        if (d <= 0) return 'hoje';
+        if (d === 1) return 'ontem';
+        return 'há ' + d + ' dias (' + new Date(ts).toLocaleDateString('pt-BR') + ')';
+    }
+    function adminDataIso(s) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || '');
+        return m ? (m[3] + '/' + m[2] + '/' + m[1]) : '—';
+    }
+
+    function adminCartao(u, st, agora, sessao) {
+        const meta = ADMIN_STATUS[st];
+        const voce = (sessao && sessao.user_id === u.user_id) ? ' <span class="admin-voce">(você)</span>' : '';
+        const ativ = u.ultima_atividade ? Date.parse(u.ultima_atividade) : 0;
+        const login = u.ultimo_login ? Date.parse(u.ultimo_login) : 0;
+        const total = Number(u.total_lancamentos) || 0;
+        const n30 = Number(u.lancamentos_30d) || 0;
+        const linhas = [
+            'Último lançamento/alteração: <b>' + adminQuando(ativ, agora) + '</b>',
+            'Último acesso: <b>' + adminQuando(login, agora) + '</b>',
+            'Lançamentos: <b>' + total + '</b>' + (total ? ' (' + n30 + ' nos últimos 30 dias · último serviço em ' + adminDataIso(u.ultimo_lancamento) + ')' : ''),
+            'Cadastro: ' + (u.cadastrado_em ? new Date(u.cadastrado_em).toLocaleDateString('pt-BR') : '—')
+        ];
+        return '<div class="card admin-conta">' +
+            '<div class="admin-topo"><b class="admin-email">' + escaparHtml(u.email || '(sem e-mail)') + voce + '</b>' +
+            '<span class="admin-badge"><i style="background:' + meta.cor + '"></i>' + meta.rotulo + '</span></div>' +
+            '<div class="admin-linhas">' + linhas.map(l => '<span>' + l + '</span>').join('') + '</div></div>';
+    }
+
+    function renderizarPainelAdmin() {
+        const resumo = document.getElementById('adminResumo');
+        const lista = document.getElementById('adminLista');
+        const info = document.getElementById('adminAtualizadoEm');
+        const sel = document.getElementById('adminLimiteDias');
+        const legenda = document.getElementById('adminLegendaTexto');
+        if (!resumo || !lista) return;
+        const dias = adminLimiteDias();
+        if (sel) sel.value = String(dias);
+        if (legenda) {
+            legenda.innerHTML = '<b>Ativo</b>: lançou ou alterou algo nos últimos ' + dias + ' dias.<br>' +
+                '<b>Só abre o app</b>: entrou no app nesse período, mas não lançou nada.<br>' +
+                '<b>Parado</b>: nem lançou nem entrou nesse período.<br>' +
+                '<b>Novo</b>: conta criada há até 3 dias e ainda sem lançamentos.<br>' +
+                '<b>Não confirmou o e-mail</b>: criou a conta, mas ainda não clicou no link do e-mail, então não consegue entrar.<br>' +
+                'O "último acesso" é o último login, e o app pede login a cada vez que abre.';
+        }
+        if (!adminDados) {
+            resumo.innerHTML = '';
+            lista.innerHTML = adminErro ? '<div class="card"><p style="color:var(--danger-text);">' + escaparHtml(adminErro) + '</p></div>' : '';
+            if (info) info.textContent = '';
+            return;
+        }
+        const agora = Date.now();
+        const sessao = getSessao();
+        const itens = adminDados.map(u => ({ u: u, st: adminClassificar(u, agora, dias) }));
+        const cont = { todos: itens.length, ativo: 0, abre: 0, parado: 0, novo: 0, sem_confirmar: 0 };
+        itens.forEach(i => { cont[i.st]++; });
+        const cartoes = [['todos', 'Contas'], ['ativo', 'Ativos'], ['abre', 'Só abrem'], ['parado', 'Parados'], ['novo', 'Novos'], ['sem_confirmar', 'Sem confirmar']];
+        resumo.innerHTML = cartoes.map(c =>
+            `<div class="dash-card admin-filtro${adminFiltro === c[0] ? ' sel' : ''}" data-filtro="${c[0]}" role="button" tabindex="0" onclick="adminFiltrar('${c[0]}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();adminFiltrar('${c[0]}');}"><h3>${cont[c[0]]}</h3><p>${c[1]}</p></div>`
+        ).join('');
+        const visiveis = itens.filter(i => adminFiltro === 'todos' || i.st === adminFiltro);
+        lista.innerHTML =
+            (adminErro ? '<div class="card"><p style="color:var(--danger-text);">⚠️ ' + escaparHtml(adminErro) + ' Mostrando os dados da última vez que carregou.</p></div>' : '') +
+            (visiveis.length ? visiveis.map(i => adminCartao(i.u, i.st, agora, sessao)).join('') : '<div class="card"><p style="color:var(--muted);">Nenhuma conta nesse filtro.</p></div>');
+        if (info) {
+            info.textContent = 'Atualizado às ' + new Date(adminCarregadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) +
+                (adminFiltro !== 'todos' ? ' · filtrando: ' + ADMIN_STATUS[adminFiltro].rotulo + ' (toque de novo pra limpar)' : '');
+        }
+    }
 
     atualizarIndicadorVersao();
     verificarAtualizacao();
@@ -2644,6 +2966,7 @@ select[multiple] { height: auto; }
         <h2 style="text-align:center; color:var(--accent); margin-bottom:4px;">Produção vs Pontuação</h2>
         <p style="text-align:center; color:var(--muted); font-size:0.85rem; margin-bottom:24px;">Entre para continuar</p>
         <div id="areaLoginObrigatorio" class="card"></div>
+        <p class="marca-dev-gate">Desenvolvido por Bruno Bonfim</p>
     </div>
 </div>
 
