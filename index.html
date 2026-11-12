@@ -716,7 +716,6 @@ select[multiple] { height: auto; }
         <div class="card">
             <h3>Conta e Sincronização na Nuvem</h3><br>
             <p style="font-size:0.85rem; color:var(--muted-strong);">O app funciona 100% offline sempre. Ao entrar numa conta, os dados também são guardados na nuvem e sincronizados automaticamente entre seus aparelhos quando houver internet.</p>
-            <p class="aviso-salvamento" style="margin:8px 0 12px;">Quem administra o app vê, de cada conta, só o e-mail, a data de cadastro, o último acesso e a quantidade de lançamentos. Nunca o conteúdo deles.</p>
             <div id="areaConta"><p style="color:var(--muted);">Carregando...</p></div>
         </div>
 
@@ -2113,8 +2112,7 @@ select[multiple] { height: auto; }
                 <button type="button" onclick="handleEntrarGate()">Entrar</button>
                 <button type="button" class="btn-secundario" onclick="handleCadastrarGate()">Criar Conta</button>
             </div>
-            <p style="text-align:center; margin-top:10px;"><a href="#" onclick="handleEsqueciSenhaGate(); return false;" style="color:var(--accent); font-size:0.85rem;">Esqueci minha senha</a></p>
-            <p class="aviso-salvamento" style="text-align:center;">Ao criar a conta, quem administra o app passa a ver seu e-mail, seu último acesso e quantos lançamentos você fez (nunca o conteúdo).</p>`;
+            <p style="text-align:center; margin-top:10px;"><a href="#" onclick="handleEsqueciSenhaGate(); return false;" style="color:var(--accent); font-size:0.85rem;">Esqueci minha senha</a></p>`;
     }
 
     // Decodifica o "payload" (parte do meio) de um JWT, sem verificar
@@ -2333,7 +2331,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.9.0';
+    const APP_VERSAO_ATUAL = '1.9.1';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
