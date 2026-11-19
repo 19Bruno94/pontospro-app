@@ -150,14 +150,102 @@ select[multiple] { height: auto; }
         html.ios body { padding-bottom: calc(83px + env(safe-area-inset-bottom, 0px)); }
         html.ios .nav-bar { padding-top: 13px; }
 
-        /* ---- v1.9.0: Conta > Admin (só aparece para administradores) ---- */
-        .sub-abas { display: flex; gap: 8px; margin-bottom: 12px; }
-        .sub-aba { flex: 1; margin: 0; background: var(--panel); color: var(--text); border: 2px solid var(--divider); font-weight: bold; }
-        .sub-aba:hover { background: var(--panel); }
-        .sub-aba.ativa { background: var(--card); color: var(--accent); border-color: var(--accent); }
-        #tab-conta.modo-admin > .card { display: none; }
+        /* ---- v1.10.0: aba Conta em 3 telas (Minha conta | Cores | Admin) com botões grandes ---- */
+        .sub-abas { display: flex; gap: 8px; margin-bottom: 16px; }
+        .sub-aba { flex: 1 1 0; min-width: 0; margin: 0; min-height: 68px; padding: 8px 4px 9px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; position: relative;
+                   background: var(--card); color: var(--text); border: 2px solid var(--primary); border-radius: 10px; box-shadow: var(--card-shadow); line-height: 1.15; text-align: center; font-weight: bold; }
+        .sub-aba:hover { background: var(--card); }
+        .sub-aba.ativa, .sub-aba.ativa:hover { background: var(--primary); color: var(--on-primary); }
+        .sub-aba-icone { font-size: 1.45rem; line-height: 1.1; }
+        .sub-aba-nome { font-size: 0.95rem; font-weight: bold; }
+        .sub-aba-dica { font-size: 0.7rem; font-weight: normal; color: var(--muted-strong); }
+        .sub-aba.ativa .sub-aba-dica { color: var(--on-primary); }
+        [hidden] { display: none !important; }
+        #subAbaAdmin { display: none; }
+        #contaSubAbas.com-admin #subAbaAdmin { display: flex; }
+        /* selos: número vermelho (respostas novas / pendências) ou "NOVO" */
+        .selo { display: inline-block; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--danger); color: var(--on-danger); font-size: 0.68rem; font-weight: bold; line-height: 20px; text-align: center; letter-spacing: 0.02em; }
+        .selo[hidden] { display: none; }
+        .sub-aba .selo { position: absolute; top: -10px; right: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); pointer-events: none; animation: pp-pulsa 1.8s ease-in-out infinite; }
+        @keyframes pp-pulsa { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+        @media (prefers-reduced-motion: reduce) { .sub-aba .selo { animation: none; } }
+        /* bolinha vermelha no botão "Conta" do menu de baixo quando tem algo novo */
+        .nav-btn.tem-aviso { position: relative; }
+        .nav-btn.tem-aviso::after { content: ''; position: absolute; top: 9px; left: calc(50% + 17px); width: 10px; height: 10px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--nav-bg); }
+        /* telas estreitas (360 px é o comum no Android): o menu de baixo não cabia e o botão "Conta" ficava cortado (já era assim na v1.8.0).
+           Abaixo de 390 px só apertamos o espaço interno e a letra; de 390 px pra cima nada muda. */
+        @media (max-width: 389px) {
+            .nav-btn { padding-left: 1px; padding-right: 1px; font-size: clamp(0.68rem, 3.6vw, 0.85rem); }
+            .nav-btn.tem-aviso::after { left: calc(50% + 19px); }
+        }
+
+        /* qual tela da aba Conta aparece (cada cartão marca a que pertence) */
+        #tab-conta .vista-cores, #tab-conta .vista-admin { display: none; }
+        #tab-conta.modo-cores .vista-conta, #tab-conta.modo-admin .vista-conta { display: none; }
+        #tab-conta.modo-cores .vista-cores { display: block; }
+        #tab-conta.modo-admin .vista-admin { display: block; }
+
+        /* ---- v1.10.0: cartão "Fale comigo" (chat do técnico) ---- */
+        .chat-intro { font-size: 0.88rem; color: var(--muted-strong); line-height: 1.45; margin-bottom: 10px; }
+        .chat-conversa { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; padding: 10px; margin-bottom: 12px; background: var(--panel-soft); border: 1px solid var(--divider); border-radius: 8px; -webkit-overflow-scrolling: touch; }
+        .chat-vazio { color: var(--muted-strong); font-size: 0.85rem; text-align: center; padding: 14px 6px; line-height: 1.4; }
+        .chat-bolha { max-width: 86%; padding: 8px 11px; border-radius: 12px; font-size: 0.92rem; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .chat-bolha small { display: block; margin-top: 3px; font-size: 0.68rem; }
+        .chat-minha { align-self: flex-end; background: var(--primary); color: var(--on-primary); border-bottom-right-radius: 3px; }
+        .chat-dele { align-self: flex-start; background: var(--card); color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
+        .chat-dele b { display: block; font-size: 0.72rem; color: var(--accent); margin-bottom: 2px; }
+        .chat-texto { display: block; width: 100%; min-height: 88px; padding: 10px; border: 1px solid var(--border); border-radius: 5px; font-size: 1rem; font-family: inherit; resize: vertical; }
+        .chat-rodape { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.72rem; color: var(--muted-strong); margin: 6px 0 10px; }
+        .chat-rodape span { margin-left: auto; }
+        .btn-mini { width: auto; margin: 0; padding: 7px 12px; font-size: 0.78rem; }
+        .btn-enviar { background: var(--success); color: var(--on-success); font-size: 1.17rem; padding: 14px 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.18); }
+        .btn-enviar:hover { background: var(--success); filter: brightness(0.95); }
+        .btn-enviar:disabled, #pendConfirmarSel:disabled, .pend-barra button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .titulo-selo { display: flex; align-items: center; gap: 8px; }
+        .titulo-selo .selo { font-size: 0.62rem; height: 18px; line-height: 18px; min-width: 18px; padding: 0 6px; }
+
+        /* ---- v1.10.0: painel Admin com abas (Uso | Pendentes | Mensagens) ---- */
         #painelAdmin { display: none; }
-        #tab-conta.modo-admin > #painelAdmin { display: block; }
+        .admin-abas { display: flex; gap: 6px; margin-bottom: 12px; }
+        .admin-aba { flex: 1 1 0; min-width: 0; margin: 0; padding: 8px 2px 9px; position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px; background: var(--panel); color: var(--text); border: 2px solid var(--divider); border-radius: 8px; font-size: 0.82rem; line-height: 1.15; }
+        .admin-aba:hover { background: var(--panel); }
+        .admin-aba.ativa, .admin-aba.ativa:hover { background: var(--card); color: var(--accent); border-color: var(--accent); }
+        .admin-aba-icone { font-size: 1.2rem; line-height: 1.1; }
+        .admin-aba .selo { position: absolute; top: -9px; right: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); pointer-events: none; }
+        .admin-conteudo { display: none; }
+        .admin-conteudo.ativa { display: block; }
+
+        /* mensagem de retorno (sucesso / erro) que aparece embaixo dos botões */
+        .fb { padding: 9px 11px; border-radius: 6px; font-size: 0.85rem; line-height: 1.4; margin-top: 10px; }
+        .fb:empty { display: none; }
+        .fb-ok { background: var(--valor-bg); color: var(--valor-text); }
+        .fb-erro { background: var(--danger-bg); color: var(--danger-text); }
+
+        /* cadastros pendentes */
+        .pend-barra { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+        .pend-barra button { margin-top: 0; font-size: 0.95rem; padding: 13px 8px; }
+        #pendConfirmarSel, #pendConfirmarSel:hover, .pend-confirmar:hover { background: var(--success); color: var(--on-success); }
+        #pendConfirmarSel:hover:not(:disabled), .pend-confirmar:hover { filter: brightness(0.95); }
+        .pend-todos { display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 4px; font-size: 0.88rem; border-bottom: 1px solid var(--divider); }
+        .pend-todos input, .pend-chk { width: 22px; height: 22px; padding: 0; margin: 0; flex: none; }
+        .pend-lista.ocupado { opacity: 0.6; pointer-events: none; }
+        .pend-item { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--divider-soft); }
+        .pend-item:last-child { border-bottom: none; }
+        .pend-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .pend-email { font-size: 0.92rem; overflow-wrap: anywhere; }
+        .pend-data { font-size: 0.75rem; color: var(--muted-strong); }
+        .pend-confirmar { width: auto; flex: none; margin: 0; padding: 10px 12px; font-size: 0.85rem; background: var(--success); color: var(--on-success); }
+        .pend-vazio { text-align: center; padding: 18px 8px; color: var(--muted-strong); font-size: 0.92rem; line-height: 1.4; }
+
+        /* caixa de mensagens do admin */
+        .msg-conversa { cursor: pointer; padding: 12px 14px; border: 2px solid transparent; }
+        .msg-conversa.nova { border-color: var(--accent); }
+        .msg-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
+        .msg-previa { font-size: 0.85rem; color: var(--muted-strong); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .msg-hora { font-size: 0.72rem; color: var(--muted-strong); margin-top: 4px; }
+        .btn-voltar { width: auto; padding: 9px 16px; margin: 0 0 12px; font-size: 0.88rem; }
+
+        /* ---- v1.9.0: Admin > Uso (lista de contas) ---- */
         .admin-filtro { cursor: pointer; border: 2px solid transparent; padding: 12px 8px; user-select: none; -webkit-user-select: none; }
         .admin-filtro.sel { border-color: var(--accent); }
         .admin-filtro h3 { font-size: 1.4rem; }
@@ -709,17 +797,46 @@ select[multiple] { height: auto; }
     </div>
 
     <div id="tab-conta" class="tab-content">
-        <div id="contaSubAbas" class="sub-abas" style="display:none">
-            <button type="button" id="subAbaConta" class="sub-aba ativa" onclick="abrirSubAbaConta('conta')">Minha conta</button>
-            <button type="button" id="subAbaAdmin" class="sub-aba" onclick="abrirSubAbaConta('admin')">👑 Admin</button>
+        <div id="contaSubAbas" class="sub-abas" role="group" aria-label="Telas da aba Conta">
+            <button type="button" id="subAbaConta" class="sub-aba ativa" aria-pressed="true" onclick="abrirSubAbaConta('conta')">
+                <span class="sub-aba-icone" aria-hidden="true">👤</span>
+                <span class="sub-aba-nome">Minha conta</span>
+                <span class="sub-aba-dica">Conta e mensagens</span>
+                <span class="selo" id="seloConta" hidden></span>
+            </button>
+            <button type="button" id="subAbaCores" class="sub-aba" aria-pressed="false" onclick="abrirSubAbaConta('cores')">
+                <span class="sub-aba-icone" aria-hidden="true">🎨</span>
+                <span class="sub-aba-nome">Cores</span>
+                <span class="sub-aba-dica">Mudar o visual</span>
+                <span class="selo" id="seloCores" hidden></span>
+            </button>
+            <button type="button" id="subAbaAdmin" class="sub-aba" aria-pressed="false" onclick="abrirSubAbaConta('admin')">
+                <span class="sub-aba-icone" aria-hidden="true">👑</span>
+                <span class="sub-aba-nome">Admin</span>
+                <span class="sub-aba-dica">Painel do admin</span>
+                <span class="selo" id="seloAdmin" hidden></span>
+            </button>
         </div>
-        <div class="card">
+        <div class="card vista-conta">
             <h3>Conta e Sincronização na Nuvem</h3><br>
             <p style="font-size:0.85rem; color:var(--muted-strong);">O app funciona 100% offline sempre. Ao entrar numa conta, os dados também são guardados na nuvem e sincronizados automaticamente entre seus aparelhos quando houver internet.</p>
             <div id="areaConta"><p style="color:var(--muted);">Carregando...</p></div>
         </div>
 
-        <div class="card" id="cardAparencia">
+        <div class="card vista-conta" id="cardChat" hidden>
+            <h3 class="titulo-selo">💬 Fale com o Bruno <span class="selo" id="seloChat" hidden></span></h3><br>
+            <p class="chat-intro">Tem uma dúvida ou uma ideia pra melhorar o app? Quer só dar um alô? Escreva aqui, fique à vontade. O Bruno lê e responde neste mesmo lugar.</p>
+            <div id="chatConversa" class="chat-conversa" aria-live="polite"></div>
+            <textarea id="chatTexto" class="chat-texto" maxlength="1000" placeholder="Escreva sua mensagem aqui..." aria-label="Sua mensagem para o Bruno"></textarea>
+            <div class="chat-rodape">
+                <button type="button" class="btn-secundario btn-mini" onclick="chatCarregar(false)">🔄 Atualizar</button>
+                <span id="chatContador">0/1000</span>
+            </div>
+            <button type="button" id="chatEnviarBtn" class="btn-enviar" onclick="chatEnviar()">📨 Enviar mensagem</button>
+            <p id="chatStatus" class="fb" aria-live="polite"></p>
+        </div>
+
+        <div class="card vista-cores" id="cardAparencia">
             <h3>🎨 Aparência</h3><br>
             <p class="aviso-salvamento" style="margin:0 0 12px;">Escolha um tema pronto ou ajuste cada cor do seu jeito. A escolha fica salva só neste aparelho.</p>
             <div id="temasProntos" class="temas-grid"></div>
@@ -730,30 +847,75 @@ select[multiple] { height: auto; }
             <button type="button" id="btnRestaurarOriginal" class="btn-secundario">↩ Restaurar cores originais</button>
         </div>
 
-        <div class="card">
+        <div class="card vista-conta">
             <h3>Versão do App</h3><br>
             <p id="indicadorVersao" style="font-size:0.9rem; color:var(--muted-strong);">v···</p>
             <button type="button" class="btn-secundario" onclick="verificarAtualizacaoManual()">🔄 Verificar Atualização</button>
         </div>
-        <div id="painelAdmin">
-            <div class="card">
-                <h3>👑 Quem está usando o app</h3><br>
-                <p class="aviso-salvamento" style="margin:0 0 12px;">Resumo de uso de cada conta: cadastro, último acesso e quantidade de lançamentos. O conteúdo dos lançamentos não aparece aqui.</p>
-                <div id="adminResumo" class="dashboard-grid"></div>
-                <div class="form-group" style="margin-top:14px;">
-                    <label for="adminLimiteDias">Considerar parado depois de:</label>
-                    <select id="adminLimiteDias" onchange="adminMudouLimite()">
-                        <option value="3">3 dias</option>
-                        <option value="7">7 dias</option>
-                        <option value="15">15 dias</option>
-                        <option value="30">30 dias</option>
-                    </select>
-                </div>
-                <button type="button" class="btn-secundario" onclick="carregarPainelAdmin()">🔄 Atualizar</button>
-                <p id="adminAtualizadoEm" class="aviso-salvamento"></p>
-                <details class="admin-legenda"><summary>Como cada status é calculado</summary><p id="adminLegendaTexto"></p></details>
+        <div id="painelAdmin" class="vista-admin">
+            <div class="admin-abas" role="group" aria-label="Seções do painel do administrador">
+                <button type="button" id="adminAbaUso" class="admin-aba ativa" aria-pressed="true" onclick="adminAbrirAba('uso')"><span class="admin-aba-icone" aria-hidden="true">📊</span><span>Uso</span></button>
+                <button type="button" id="adminAbaPend" class="admin-aba" aria-pressed="false" onclick="adminAbrirAba('pend')"><span class="admin-aba-icone" aria-hidden="true">✉️</span><span>Pendentes</span><span class="selo" id="seloPend" hidden></span></button>
+                <button type="button" id="adminAbaMsg" class="admin-aba" aria-pressed="false" onclick="adminAbrirAba('msg')"><span class="admin-aba-icone" aria-hidden="true">💬</span><span>Mensagens</span><span class="selo" id="seloMsg" hidden></span></button>
             </div>
-            <div id="adminLista"></div>
+
+            <div id="adminSecUso" class="admin-conteudo ativa">
+                <div class="card">
+                    <h3>👑 Quem está usando o app</h3><br>
+                    <p class="aviso-salvamento" style="margin:0 0 12px;">Resumo de uso de cada conta: cadastro, último acesso e quantidade de lançamentos. O conteúdo dos lançamentos não aparece aqui.</p>
+                    <div id="adminResumo" class="dashboard-grid"></div>
+                    <div class="form-group" style="margin-top:14px;">
+                        <label for="adminLimiteDias">Considerar parado depois de:</label>
+                        <select id="adminLimiteDias" onchange="adminMudouLimite()">
+                            <option value="3">3 dias</option>
+                            <option value="7">7 dias</option>
+                            <option value="15">15 dias</option>
+                            <option value="30">30 dias</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn-secundario" onclick="carregarPainelAdmin()">🔄 Atualizar</button>
+                    <p id="adminAtualizadoEm" class="aviso-salvamento"></p>
+                    <details class="admin-legenda"><summary>Como cada status é calculado</summary><p id="adminLegendaTexto"></p></details>
+                </div>
+                <div id="adminLista"></div>
+            </div>
+
+            <div id="adminSecPend" class="admin-conteudo">
+                <div class="card">
+                    <h3>✉️ Cadastros Pendentes de Confirmação</h3><br>
+                    <p class="aviso-salvamento" style="margin:0 0 12px;">Quem criou a conta mas ainda não confirmou o e-mail (a mensagem pode não ter chegado, principalmente no Outlook/Hotmail). Confirmando aqui, a pessoa já consegue entrar. Confirme só quem você conhece.</p>
+                    <div class="pend-barra">
+                        <button type="button" id="pendConfirmarSel" onclick="adminConfirmarSelecionados()" disabled>✅ Confirmar Selecionados</button>
+                        <button type="button" id="pendAtualizar" class="btn-secundario" onclick="adminCarregarPendentes(true)">🔄 Atualizar Lista (<span id="pendContador">0</span>)</button>
+                    </div>
+                    <label id="pendTodosRotulo" class="pend-todos" hidden><input type="checkbox" id="pendTodos" onchange="adminSelecionarTodos(this.checked)"> Selecionar todos</label>
+                    <div id="pendLista" class="pend-lista"></div>
+                    <p id="pendStatus" class="fb" aria-live="polite"></p>
+                </div>
+            </div>
+
+            <div id="adminSecMsg" class="admin-conteudo">
+                <div id="msgListaView">
+                    <div class="card">
+                        <h3>💬 Mensagens dos técnicos</h3><br>
+                        <p class="aviso-salvamento" style="margin:0 0 12px;">Dúvidas, ideias e recados que os técnicos mandaram. Toque numa conversa pra ler e responder.</p>
+                        <button type="button" class="btn-secundario" onclick="adminCarregarConversas(true)">🔄 Atualizar mensagens</button>
+                        <p id="msgStatus" class="fb" aria-live="polite"></p>
+                    </div>
+                    <div id="msgLista"></div>
+                </div>
+                <div id="msgThreadView" hidden>
+                    <button type="button" class="btn-secundario btn-voltar" onclick="adminFecharConversa()">← Voltar às conversas</button>
+                    <div class="card">
+                        <h3 id="msgThreadTitulo" class="admin-email"></h3><br>
+                        <div id="msgThread" class="chat-conversa" aria-live="polite"></div>
+                        <textarea id="msgResposta" class="chat-texto" maxlength="1000" placeholder="Escreva sua resposta..." aria-label="Sua resposta"></textarea>
+                        <div class="chat-rodape"><span id="msgRespContador">0/1000</span></div>
+                        <button type="button" id="msgEnviarBtn" class="btn-enviar" onclick="adminEnviarResposta()">📨 Enviar resposta</button>
+                        <p id="msgThreadStatus" class="fb" aria-live="polite"></p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -764,7 +926,7 @@ select[multiple] { height: auto; }
     <button class="nav-btn" onclick="switchTab('dashboard', this)">Dashboard</button>
     <button class="nav-btn" onclick="switchTab('servicos', this)">Config Serviços</button>
     <button class="nav-btn" onclick="switchTab('relatorios', this)">Relatórios</button>
-    <button class="nav-btn" onclick="switchTab('conta', this)">Conta</button>
+    <button class="nav-btn" id="navConta" onclick="switchTab('conta', this)">Conta</button>
 </div>
 
 <script>
@@ -970,7 +1132,7 @@ select[multiple] { height: auto; }
         } else if(tab === 'conta') {
             document.getElementById('app-title').innerText = "Conta e Sincronização";
             atualizarTelaConta();
-            ajustarTituloConta();
+            contaAoAbrirAba();
         }
     }
 
@@ -2092,7 +2254,7 @@ select[multiple] { height: auto; }
     function esconderTelaLoginObrigatorio() {
         desbloqueadoNestaSessao = true;
         document.getElementById('telaLoginObrigatorio').style.display = 'none';
-        try { verificarAdmin(); } catch (e) {}
+        try { iniciarIndicadoresConta(); } catch (e) {}
     }
 
     function renderizarLoginObrigatorio() {
@@ -2278,6 +2440,7 @@ select[multiple] { height: auto; }
     function atualizarTelaConta() {
         const area = document.getElementById('areaConta');
         if (!area) return;
+        try { chatAtualizarVisibilidade(); } catch (e) {}
 
         if (!sbConfigurado()) {
             area.innerHTML = `<p style="color:var(--warn);">A sincronização em nuvem ainda não foi configurada neste app (falta preencher SUPABASE_URL / SUPABASE_ANON_KEY no código-fonte). O app continua funcionando 100% offline normalmente.</p>`;
@@ -2331,7 +2494,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.9.1';
+    const APP_VERSAO_ATUAL = '1.10.0';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
@@ -2668,14 +2831,15 @@ select[multiple] { height: auto; }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciarAjustesIOS); else iniciarAjustesIOS();
 
     // ==================================================================
-    // v1.9.0 — MENSAGENS DE LOGIN EM PORTUGUÊS + PAINEL ADMIN
-    // O painel Admin só aparece para contas listadas na tabela app_admins
-    // do Supabase. Quem decide é o SERVIDOR (funções eh_admin() e
-    // admin_resumo_usuarios()); aqui o app só desenha a tela. Para quem
-    // não é admin nada muda. O painel mostra só sinais de uso (e-mail,
-    // cadastro, último acesso, quantidade de lançamentos), nunca o
-    // conteúdo dos lançamentos. Estado em "var" de propósito (sem risco
-    // de "let" usado antes de declarar, já que limparSessao() pode rodar cedo).
+    // v1.10.0 — ABA CONTA EM 3 TELAS (Minha conta | Cores | Admin),
+    // e, SÓ PARA O ADMINISTRADOR: Uso + CADASTROS PENDENTES DE
+    // CONFIRMAÇÃO + CAIXA DE MENSAGENS dos técnicos.
+    // Quem decide quem é admin é o SERVIDOR (tabela app_admins + funções
+    // SECURITY DEFINER no Supabase); aqui o app só desenha a tela. Este
+    // app NÃO usa o SDK supabase-js: fala com o Supabase direto por fetch
+    // (/rest/v1/...), igual à sincronização. Nada daqui mexe nos
+    // lançamentos. Estado em "var" de propósito (sem risco de "let" usado
+    // antes de declarar, já que limparSessao() pode rodar cedo).
     // ==================================================================
 
     // Traduz erros em inglês do Supabase (e de rede) pra algo que o técnico entende.
@@ -2691,8 +2855,16 @@ select[multiple] { height: auto; }
         return bruto;
     }
 
+    // ---------- estado ----------
     var adminAtivo = false;       // esta conta é admin? (quem responde é o servidor)
-    var adminDados = null;        // lista de contas vinda do servidor (fica só na memória)
+    var contaVista = 'conta';     // tela aberta na aba Conta: 'conta' | 'cores' | 'admin'
+    var adminAba = 'uso';         // aba aberta no painel: 'uso' | 'pend' | 'msg'
+    var indicadores = { respostas: 0, pend: 0, msgs: 0 };   // números dos avisos vermelhos
+    var indicadoresTimer = null;
+    var indicadoresOcupado = false;
+    var indicadoresUid = null;
+
+    var adminDados = null;        // Uso: lista de contas vinda do servidor (fica só na memória)
     var adminCarregadoEm = 0;
     var adminCarregando = false;
     var adminErro = '';
@@ -2705,20 +2877,33 @@ select[multiple] { height: auto; }
         sem_confirmar: { rotulo: 'Não confirmou o e-mail', cor: 'var(--muted-soft)' }
     };
 
-    function adminLimiteDias() {
-        let v = 7;
-        try { v = parseInt(localStorage.getItem('admin_limite_dias'), 10); } catch (e) {}
-        return [3, 7, 15, 30].indexOf(v) >= 0 ? v : 7;
-    }
+    var pendDados = null;         // Pendentes: [{ id, email, created_at }] vindo do servidor
+    var pendSel = {};             // e-mails marcados (e-mail -> true)
+    var pendCarregando = false;
+    var pendOcupado = false;      // confirmando agora
+    var pendCarregadoEm = 0;
 
-    // Chama uma função do Supabase (RPC) com o login desta conta.
-    async function chamarRpcAdmin(nome) {
+    var msgConversas = null;      // Mensagens: uma linha por técnico
+    var msgCarregando = false;
+    var msgCarregadoEm = 0;
+    var msgErro = '';
+    var msgAberta = null;         // conversa aberta: { user_id, email }
+    var msgThread = null;         // mensagens da conversa aberta
+    var msgOcupado = false;       // enviando resposta
+    var msgThreadFalhou = false;  // não conseguiu abrir a conversa (mostra um aviso em vez de ficar em "Carregando...")
+
+    // ---------- chamadas ao Supabase (PostgREST) com o login desta conta ----------
+    async function chamarApi(caminho, opcoes) {
         const sessao = await renovarTokenSeNecessario();
-        if (!sessao) throw new Error('Sessão expirada, entre novamente.');
-        const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${nome}`, {
-            method: 'POST',
-            headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${sessao.access_token}`, 'Content-Type': 'application/json' },
-            body: '{}'
+        if (!sessao) { const e = new Error('Sessão expirada, entre novamente.'); e.status = 401; throw e; }
+        const o = opcoes || {};
+        const cab = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + sessao.access_token };
+        if (o.corpo !== undefined) cab['Content-Type'] = 'application/json';
+        if (o.preferir) cab['Prefer'] = o.preferir;
+        const resp = await fetch(SUPABASE_URL + '/rest/v1/' + caminho, {
+            method: o.metodo || 'GET',
+            headers: cab,
+            body: o.corpo !== undefined ? JSON.stringify(o.corpo) : undefined
         });
         const texto = await resp.text().catch(() => '');
         if (!resp.ok) {
@@ -2727,23 +2912,95 @@ select[multiple] { height: auto; }
             err.corpo = texto;
             throw err;
         }
-        return texto ? JSON.parse(texto) : null;
+        if (!texto) return null;
+        try { return JSON.parse(texto); } catch (e) { return null; }
+    }
+    function chamarRpcAdmin(nome, args) { return chamarApi('rpc/' + nome, { metodo: 'POST', corpo: args || {} }); }
+
+    function corpoErro(e) {
+        try { return JSON.parse((e && e.corpo) || '{}') || {}; } catch (x) { return {}; }
+    }
+    // Erros que valem pra qualquer tela. Devolve '' se não reconhecer.
+    function erroBase(e) {
+        if (e && e.message === '__offline__') return 'Sem internet agora. Tente de novo quando tiver sinal.';
+        if (e && (e.status === 401 || /Sess[ãa]o expirada/.test(e.message || ''))) return 'Sessão expirada. Saia da conta e entre de novo.';
+        const c = corpoErro(e);
+        if (c.code === 'P0001' || c.code === '22023') {   // textos escritos por nós no servidor (limite de envio, lista vazia...)
+            const t = String(c.message || '').trim();
+            return t && !/[.!?]$/.test(t) ? t + '.' : t;   // com ponto final, pra emendar com a frase seguinte
+        }
+        if (e instanceof TypeError) return 'Não consegui falar com o servidor agora. Tente de novo.';
+        return '';
+    }
+    function mensagemErroAdmin(e, acao) {
+        const c = corpoErro(e);
+        if (e && (e.status === 403 || c.code === '42501' || /Acesso negado/.test(c.message || ''))) return 'Esta conta não tem permissão de administrador.';
+        const b = erroBase(e);
+        if (b) return b;
+        if (e && e.status === 404) return 'O servidor não achou essa função. O SQL da v1.10.0 já foi aplicado no Supabase?';
+        return 'Não deu pra ' + (acao || 'concluir') + ' (' + ((e && e.message) ? e.message : 'erro desconhecido') + ').';
+    }
+
+    // ---------- datas ----------
+    function formatarDataHora(iso) {          // dd/mm/aaaa HH:mm
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '—';
+        const p = n => String(n).padStart(2, '0');
+        return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+    function formatarHoraCurta(iso) {         // dd/mm HH:mm
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        const p = n => String(n).padStart(2, '0');
+        return p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+    function tempoRelativo(iso) {
+        const t = Date.parse(iso);
+        if (!t) return '';
+        const s = Math.max(0, Math.round((Date.now() - t) / 1000));
+        if (s < 60) return 'agora há pouco';
+        const m = Math.floor(s / 60);
+        if (m < 60) return 'há ' + m + ' min';
+        const h = Math.floor(m / 60);
+        if (h < 24) return 'há ' + h + ' h';
+        const d = Math.floor(h / 24);
+        return 'há ' + d + (d === 1 ? ' dia' : ' dias');
+    }
+
+    // ---------- quem é admin ----------
+    // Tira da tela tudo o que veio das funções de admin (e-mails, conversas, resumo de uso): ao sair da conta,
+    // ou se o servidor disser que esta conta não é (mais) admin. Assim nada fica escondido no aparelho.
+    function adminLimparTela() {
+        ['adminResumo', 'adminLista', 'pendLista', 'msgLista', 'msgThread'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
+        ['adminAtualizadoEm', 'msgThreadTitulo'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ''; });
+        pendStatus('', ''); msgStatus('', ''); msgThreadStatus('', '');
+        const campo = document.getElementById('msgResposta');
+        if (campo) { campo.value = ''; msgContarResposta(); }
+        const lv = document.getElementById('msgListaView'); if (lv) lv.hidden = false;
+        const tv = document.getElementById('msgThreadView'); if (tv) tv.hidden = true;
+        atualizarBarraPendentes();
     }
 
     function definirAdmin(ok) {
         adminAtivo = !!ok;
         const barra = document.getElementById('contaSubAbas');
-        if (barra) barra.style.display = adminAtivo ? 'flex' : 'none';
+        if (barra) barra.classList.toggle('com-admin', adminAtivo);
         if (!adminAtivo) {
-            adminDados = null;
-            adminErro = '';
-            abrirSubAbaConta('conta');
+            adminDados = null; adminErro = ''; adminFiltro = 'todos';
+            pendDados = null; pendSel = {};
+            msgConversas = null; msgAberta = null; msgThread = null; msgErro = ''; msgThreadFalhou = false;
+            try { adminLimparTela(); } catch (e) {}
+            if (contaVista === 'admin') abrirSubAbaConta('conta');
         }
+        try { chatAtualizarVisibilidade(); } catch (e) {}
+        try { atualizarSelosConta(); } catch (e) {}
     }
 
     function ocultarAdminAoSair() {
         try { localStorage.removeItem('admin_cache'); } catch (e) {}
         definirAdmin(false);
+        contaLimparIndicadores();
+        chatLimpar();
     }
 
     // Pergunta ao servidor se esta conta é admin. Sem internet, vale o que o servidor disse da última vez.
@@ -2762,37 +3019,162 @@ select[multiple] { height: auto; }
         } catch (e) { /* sem internet ou servidor fora do ar: fica como estava */ }
     }
 
+    // ---------- aba Conta: 3 telas ----------
     function ajustarTituloConta() {
         const t = document.getElementById('app-title');
         const aba = document.getElementById('tab-conta');
         if (!t || !aba || !aba.classList.contains('active')) return;
-        t.innerText = aba.classList.contains('modo-admin') ? 'Administração' : 'Conta e Sincronização';
+        t.innerText = contaVista === 'admin' ? 'Administração' : (contaVista === 'cores' ? 'Cores do App' : 'Conta e Sincronização');
     }
 
     function abrirSubAbaConta(qual) {
         const aba = document.getElementById('tab-conta');
         if (!aba) return;
-        const admin = qual === 'admin' && adminAtivo;
-        aba.classList.toggle('modo-admin', admin);
-        const bConta = document.getElementById('subAbaConta');
-        const bAdmin = document.getElementById('subAbaAdmin');
-        if (bConta) bConta.classList.toggle('ativa', !admin);
-        if (bAdmin) bAdmin.classList.toggle('ativa', admin);
+        let vista = (qual === 'cores' || qual === 'admin') ? qual : 'conta';
+        if (vista === 'admin' && !adminAtivo) vista = 'conta';
+        contaVista = vista;
+        aba.classList.toggle('modo-cores', vista === 'cores');
+        aba.classList.toggle('modo-admin', vista === 'admin');
+        [['subAbaConta', 'conta'], ['subAbaCores', 'cores'], ['subAbaAdmin', 'admin']].forEach(p => {
+            const b = document.getElementById(p[0]);
+            if (!b) return;
+            b.classList.toggle('ativa', vista === p[1]);
+            b.setAttribute('aria-pressed', vista === p[1] ? 'true' : 'false');
+        });
+        if (vista === 'cores') { try { localStorage.setItem('cores_visto', '1'); } catch (e) {} }
+        atualizarSelosConta();
         ajustarTituloConta();
-        if (admin) carregarPainelAdminSePreciso();
+        if (vista === 'admin') adminAoAbrir();
+        else if (vista === 'conta') chatAoAbrir();
+    }
+
+    // Chamada toda vez que a aba Conta é aberta no menu de baixo.
+    function contaAoAbrirAba() {
+        ajustarTituloConta();
+        abrirSubAbaConta(contaVista);
+    }
+
+    // ---------- avisos vermelhos (número nos botões + bolinha no menu de baixo) ----------
+    function definirSelo(id, valor) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        let mostrar, texto;
+        if (typeof valor === 'string') { mostrar = valor !== ''; texto = valor; }
+        else { const n = Number(valor) || 0; mostrar = n > 0; texto = n > 99 ? '99+' : String(n); }
+        el.textContent = mostrar ? texto : '';
+        el.hidden = !mostrar;
+    }
+
+    function atualizarSelosConta() {
+        const admin = adminAtivo;
+        const ind = indicadores || { respostas: 0, pend: 0, msgs: 0 };
+        definirSelo('seloConta', admin ? 0 : ind.respostas);
+        definirSelo('seloChat', admin ? 0 : ind.respostas);
+        definirSelo('seloAdmin', admin ? (ind.pend + ind.msgs) : 0);
+        definirSelo('seloPend', admin ? ind.pend : 0);
+        definirSelo('seloMsg', admin ? ind.msgs : 0);
+        let visto = true;
+        try { visto = localStorage.getItem('cores_visto') === '1'; } catch (e) {}
+        definirSelo('seloCores', visto ? '' : 'NOVO');
+        const nav = document.getElementById('navConta');
+        if (nav) nav.classList.toggle('tem-aviso', (admin ? (ind.pend + ind.msgs) : ind.respostas) > 0);
+    }
+
+    function contaLimparIndicadores() {
+        indicadores = { respostas: 0, pend: 0, msgs: 0 };
+        indicadoresUid = null;
+        atualizarSelosConta();
+    }
+
+    function somaNaoLidas() {
+        return (msgConversas || []).reduce((a, c) => a + (Number(c.nao_lidas) || 0), 0);
+    }
+
+    // Busca só os números (e, se o admin estiver olhando a lista, atualiza a lista). Sem internet, não faz nada.
+    async function atualizarIndicadoresConta() {
+        if (indicadoresOcupado || !estaLogado() || !desbloqueadoNestaSessao || !navigator.onLine) return;
+        indicadoresOcupado = true;
+        try {
+            if (adminAtivo) {
+                const lp = await chamarRpcAdmin('admin_listar_emails_pendentes');
+                const lc = await chamarRpcAdmin('admin_listar_conversas');
+                if (!adminAtivo) return;   // saiu da conta enquanto carregava: não guarda nada
+                const aba = document.getElementById('tab-conta');
+                const naTela = contaVista === 'admin' && aba && aba.classList.contains('active');
+                if (!pendCarregando && !pendOcupado) {
+                    const mudou = adminAplicarPendentes(lp);
+                    if (mudou && naTela && adminAba === 'pend') renderizarPendentes();
+                }
+                if (!msgCarregando && !msgOcupado) {
+                    const mudou = adminAplicarConversas(lc);
+                    if (naTela && adminAba === 'msg') {
+                        if (!msgAberta) { if (mudou) renderizarConversas(); }
+                        else {
+                            const c = (msgConversas || []).find(x => x.user_id === msgAberta.user_id);
+                            if (c && Number(c.nao_lidas) > 0) adminRecarregarThread();
+                        }
+                    }
+                }
+            } else {
+                await chatVerificarRespostas();
+            }
+        } catch (e) { /* sem internet ou servidor fora do ar: mantém os números que já estavam */ }
+        finally { indicadoresOcupado = false; atualizarSelosConta(); }
+    }
+
+    // Liga a verificação periódica (a cada 90 s com o app aberto) — chamada quando a pessoa entra no app.
+    function iniciarIndicadoresConta() {
+        const s = getSessao();
+        if (!s) return;
+        if (!indicadoresTimer) {
+            indicadoresTimer = setInterval(function () { if (document.visibilityState === 'visible') atualizarIndicadoresConta(); }, 90000);
+            document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') atualizarIndicadoresConta(); });
+            window.addEventListener('online', function () { atualizarIndicadoresConta(); });
+        }
+        if (indicadoresUid !== s.user_id) {
+            indicadoresUid = s.user_id;
+            Promise.resolve(verificarAdmin()).then(atualizarIndicadoresConta, atualizarIndicadoresConta);
+        } else {
+            atualizarIndicadoresConta();
+        }
+    }
+
+    // ---------- painel Admin: abas (Uso | Pendentes | Mensagens) ----------
+    var ADMIN_ABAS = { uso: ['adminAbaUso', 'adminSecUso'], pend: ['adminAbaPend', 'adminSecPend'], msg: ['adminAbaMsg', 'adminSecMsg'] };
+
+    function adminAoAbrir() {
+        adminAbrirAba(adminAba);
+        // ao abrir a tela do admin já busca, em segundo plano, o que as outras abas mostram (os números ficam certos)
+        if (adminAba !== 'pend') adminCarregarPendentes(false, true);
+        if (adminAba !== 'msg') adminCarregarConversas(false, true);
+    }
+
+    function adminAbrirAba(qual) {
+        adminAba = ADMIN_ABAS[qual] ? qual : 'uso';
+        Object.keys(ADMIN_ABAS).forEach(k => {
+            const on = k === adminAba;
+            const b = document.getElementById(ADMIN_ABAS[k][0]);
+            const s = document.getElementById(ADMIN_ABAS[k][1]);
+            if (b) { b.classList.toggle('ativa', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+            if (s) s.classList.toggle('ativa', on);
+        });
+        if (adminAba === 'uso') carregarPainelAdminSePreciso();
+        else if (adminAba === 'pend') adminCarregarPendentes(false);
+        else adminCarregarConversas(false);
+    }
+
+    // ==================================================================
+    // ADMIN > USO (quem está ativo, parado, só abre o app...) — igual à v1.9.x
+    // ==================================================================
+    function adminLimiteDias() {
+        let v = 7;
+        try { v = parseInt(localStorage.getItem('admin_limite_dias'), 10); } catch (e) {}
+        return [3, 7, 15, 30].indexOf(v) >= 0 ? v : 7;
     }
 
     function carregarPainelAdminSePreciso() {
         if (!adminDados || Date.now() - adminCarregadoEm > 60000) carregarPainelAdmin();
         else renderizarPainelAdmin();
-    }
-
-    function mensagemErroAdmin(e) {
-        if (e && e.message === '__offline__') return 'Sem internet agora. O painel precisa de conexão pra buscar os dados.';
-        if (e && (e.status === 403 || /42501|Acesso negado/.test(e.corpo || ''))) return 'Esta conta não tem permissão de administrador.';
-        if (e && (e.status === 401 || /Sess[ãa]o expirada/.test(e.message || ''))) return 'Sessão expirada. Saia da conta e entre de novo.';
-        if (e instanceof TypeError) return 'Não consegui falar com o servidor agora. Tente de novo.';
-        return 'Erro ao carregar o painel (' + ((e && e.message) ? e.message : 'desconhecido') + ').';
     }
 
     async function carregarPainelAdmin() {
@@ -2807,11 +3189,12 @@ select[multiple] { height: auto; }
         try {
             if (!navigator.onLine) throw new Error('__offline__');
             const dados = await chamarRpcAdmin('admin_resumo_usuarios');
+            if (!adminAtivo) return;   // saiu da conta enquanto carregava: não guarda nada
             adminDados = Array.isArray(dados) ? dados : [];
             adminCarregadoEm = Date.now();
             adminErro = '';
         } catch (e) {
-            adminErro = mensagemErroAdmin(e);
+            adminErro = mensagemErroAdmin(e, 'carregar o painel');
         } finally {
             adminCarregando = false;
             renderizarPainelAdmin();
@@ -2893,7 +3276,7 @@ select[multiple] { height: auto; }
                 '<b>Só abre o app</b>: entrou no app nesse período, mas não lançou nada.<br>' +
                 '<b>Parado</b>: nem lançou nem entrou nesse período.<br>' +
                 '<b>Novo</b>: conta criada há até 3 dias e ainda sem lançamentos.<br>' +
-                '<b>Não confirmou o e-mail</b>: criou a conta, mas ainda não clicou no link do e-mail, então não consegue entrar.<br>' +
+                '<b>Não confirmou o e-mail</b>: criou a conta, mas ainda não clicou no link do e-mail, então não consegue entrar (você pode confirmar na aba Pendentes).<br>' +
                 'O "último acesso" é o último login, e o app pede login a cada vez que abre.';
         }
         if (!adminDados) {
@@ -2920,6 +3303,542 @@ select[multiple] { height: auto; }
                 (adminFiltro !== 'todos' ? ' · filtrando: ' + ADMIN_STATUS[adminFiltro].rotulo + ' (toque de novo pra limpar)' : '');
         }
     }
+
+    // ==================================================================
+    // ADMIN > PENDENTES: cadastros que ainda não confirmaram o e-mail.
+    // Listar e confirmar são funções do servidor que só rodam para admin
+    // (admin_listar_emails_pendentes / admin_confirmar_emails).
+    // ==================================================================
+    function pendStatus(texto, tipo) {
+        const el = document.getElementById('pendStatus');
+        if (!el) return;
+        el.textContent = texto || '';
+        el.className = 'fb' + (tipo === 'ok' ? ' fb-ok' : (tipo === 'erro' ? ' fb-erro' : ''));
+    }
+
+    // Guarda a lista nova. Devolve true se mudou alguma coisa em relação à que já estava.
+    function adminAplicarPendentes(lista) {
+        const novo = Array.isArray(lista) ? lista : [];
+        const antes = pendDados === null ? null : JSON.stringify(pendDados.map(p => p.email));
+        pendDados = novo;
+        pendCarregadoEm = Date.now();
+        const vivos = {};
+        novo.forEach(p => { vivos[p.email] = true; });
+        Object.keys(pendSel).forEach(k => { if (!vivos[k]) delete pendSel[k]; });
+        indicadores.pend = novo.length;
+        return antes !== JSON.stringify(novo.map(p => p.email));
+    }
+
+    async function adminCarregarPendentes(forcar, interno) {
+        if (pendCarregando) return;
+        if (!forcar && pendDados && Date.now() - pendCarregadoEm < 30000) { renderizarPendentes(); return; }
+        pendCarregando = true;
+        if (!interno) pendStatus('', '');
+        if (pendDados === null) renderizarPendentes(); else atualizarBarraPendentes();
+        try {
+            if (!navigator.onLine) throw new Error('__offline__');
+            const r = await chamarRpcAdmin('admin_listar_emails_pendentes');
+            if (!adminAtivo) return;   // saiu da conta enquanto carregava: não guarda nada
+            adminAplicarPendentes(r);
+        } catch (e) {
+            // em segundo plano só avisa quando não há lista nenhuma na tela (senão ela ficaria em branco, sem explicação)
+            if (!interno || pendDados === null) pendStatus('⚠️ ' + mensagemErroAdmin(e, 'carregar a lista') + (pendDados ? ' Mostrando a lista da última vez que carregou.' : ''), 'erro');
+        } finally {
+            pendCarregando = false;
+            renderizarPendentes();
+            atualizarSelosConta();
+        }
+    }
+
+    function atualizarBarraPendentes() {
+        const n = pendDados ? pendDados.length : 0;
+        const sel = (pendDados || []).filter(p => pendSel[p.email]).length;
+        const cont = document.getElementById('pendContador');
+        if (cont) cont.textContent = String(n);
+        const btn = document.getElementById('pendConfirmarSel');
+        if (btn) {
+            btn.disabled = sel === 0 || pendOcupado;
+            btn.textContent = '✅ Confirmar Selecionados' + (sel > 0 ? ' (' + sel + ')' : '');
+        }
+        const atu = document.getElementById('pendAtualizar');
+        if (atu) atu.disabled = pendCarregando || pendOcupado;
+        const todos = document.getElementById('pendTodos');
+        if (todos) {
+            todos.checked = n > 0 && sel === n;
+            todos.indeterminate = sel > 0 && sel < n;
+            todos.disabled = pendOcupado;
+        }
+        const rot = document.getElementById('pendTodosRotulo');
+        if (rot) rot.hidden = n === 0;
+    }
+
+    function renderizarPendentes() {
+        const lista = document.getElementById('pendLista');
+        if (!lista) return;
+        lista.classList.toggle('ocupado', pendOcupado);
+        if (pendDados === null) {
+            lista.innerHTML = pendCarregando ? '<div class="pend-vazio">Carregando...</div>' : '';
+        } else if (!pendDados.length) {
+            lista.innerHTML = '<div class="pend-vazio">✅<br>Nenhum e-mail pendente no momento.</div>';
+        } else {
+            lista.innerHTML = pendDados.map(p => {
+                const e = escaparHtml(p.email);
+                return '<div class="pend-item" data-email="' + e + '">' +
+                    '<input type="checkbox" class="pend-chk"' + (pendSel[p.email] ? ' checked' : '') + ' aria-label="Selecionar ' + e + '">' +
+                    '<div class="pend-info"><span class="pend-email">' + e + '</span>' +
+                    '<span class="pend-data">' + formatarDataHora(p.created_at) + ' · ' + tempoRelativo(p.created_at) + '</span></div>' +
+                    '<button type="button" class="pend-confirmar">Confirmar</button></div>';
+            }).join('');
+        }
+        atualizarBarraPendentes();
+    }
+
+    function pendMarcar(email, marcado) {
+        if (marcado) pendSel[email] = true; else delete pendSel[email];
+        atualizarBarraPendentes();
+    }
+
+    function adminSelecionarTodos(marcado) {
+        pendSel = {};
+        if (marcado) (pendDados || []).forEach(p => { pendSel[p.email] = true; });
+        document.querySelectorAll('#pendLista .pend-chk').forEach(c => { c.checked = !!marcado; });
+        atualizarBarraPendentes();
+    }
+
+    function adminConfirmarSelecionados() {
+        if (pendOcupado) return;
+        const lista = (pendDados || []).map(p => p.email).filter(e => pendSel[e]);
+        if (!lista.length) return;
+        const quem = lista.length === 1 ? 'o e-mail selecionado' : 'os ' + lista.length + ' e-mails selecionados';
+        confirmarAcao('Confirmar manualmente ' + quem + '? Eles poderão entrar no app sem clicar no link de confirmação, então confirme só quem você conhece.', ok => { if (ok) adminConfirmarEmails(lista); });
+    }
+
+    function adminConfirmarUm(email) {
+        if (pendOcupado || !email) return;
+        confirmarAcao('Confirmar o e-mail ' + email + ' sem o link de confirmação? Faça isso só se você conhece essa pessoa.', ok => { if (ok) adminConfirmarEmails([email]); });
+    }
+
+    async function adminConfirmarEmails(lista) {
+        if (pendOcupado || !lista || !lista.length) return;
+        pendOcupado = true;
+        pendStatus('Confirmando...', '');
+        renderizarPendentes();
+        try {
+            if (!navigator.onLine) throw new Error('__offline__');
+            const feitos = await chamarRpcAdmin('admin_confirmar_emails', { lista_emails: lista });
+            const ok = (Array.isArray(feitos) ? feitos : []).map(x => String(x).toLowerCase());
+            // tira da tela na hora, sem recarregar
+            pendDados = (pendDados || []).filter(p => ok.indexOf(String(p.email).toLowerCase()) < 0);
+            Object.keys(pendSel).forEach(k => { if (ok.indexOf(k.toLowerCase()) >= 0) delete pendSel[k]; });
+            indicadores.pend = pendDados.length;
+            const faltou = lista.filter(e => ok.indexOf(String(e).toLowerCase()) < 0);
+            const msgFeitos = ok.length === 1 ? '1 e-mail confirmado' : ok.length + ' e-mails confirmados';
+            if (!faltou.length) {
+                pendStatus('✅ ' + msgFeitos + '. Já podem entrar no app.', 'ok');
+            } else {
+                pendStatus((ok.length ? '✅ ' + msgFeitos + '. ' : '') + (faltou.length === 1 ? '1 já tinha sido confirmado (ou não existe mais)' : faltou.length + ' já tinham sido confirmados (ou não existem mais)') + '. Atualizei a lista.', ok.length ? 'ok' : 'erro');
+                pendOcupado = false;
+                pendCarregando = false;
+                await adminCarregarPendentes(true, true);
+            }
+        } catch (e) {
+            pendStatus('⚠️ ' + mensagemErroAdmin(e, 'confirmar') + ' Nada foi confirmado.', 'erro');
+        } finally {
+            pendOcupado = false;
+            renderizarPendentes();
+            atualizarSelosConta();
+        }
+    }
+
+    // ==================================================================
+    // ADMIN > MENSAGENS: caixa de entrada com as conversas dos técnicos
+    // ==================================================================
+    function msgStatus(texto, tipo) {
+        const el = document.getElementById('msgStatus');
+        if (!el) return;
+        el.textContent = texto || '';
+        el.className = 'fb' + (tipo === 'ok' ? ' fb-ok' : (tipo === 'erro' ? ' fb-erro' : ''));
+    }
+    function msgThreadStatus(texto, tipo) {
+        const el = document.getElementById('msgThreadStatus');
+        if (!el) return;
+        el.textContent = texto || '';
+        el.className = 'fb' + (tipo === 'ok' ? ' fb-ok' : (tipo === 'erro' ? ' fb-erro' : ''));
+    }
+
+    // Guarda as conversas novas. Devolve true se mudou alguma coisa.
+    function adminAplicarConversas(lista) {
+        const novo = Array.isArray(lista) ? lista : [];
+        const assin = l => JSON.stringify(l.map(c => [c.user_id, c.ultima_em, Number(c.nao_lidas) || 0, Number(c.total) || 0]));
+        const antes = msgConversas === null ? null : assin(msgConversas);
+        msgConversas = novo;
+        msgCarregadoEm = Date.now();
+        indicadores.msgs = somaNaoLidas();
+        return antes !== assin(novo);
+    }
+
+    async function adminCarregarConversas(forcar, interno) {
+        if (msgCarregando) return;
+        if (!forcar && msgConversas && Date.now() - msgCarregadoEm < 30000) { renderizarConversas(); return; }
+        msgCarregando = true;
+        if (!interno) { msgErro = ''; msgStatus('Atualizando...', ''); }
+        if (msgConversas === null) renderizarConversas();
+        try {
+            if (!navigator.onLine) throw new Error('__offline__');
+            const r = await chamarRpcAdmin('admin_listar_conversas');
+            if (!adminAtivo) return;   // saiu da conta enquanto carregava: não guarda nada
+            adminAplicarConversas(r);
+            msgErro = '';
+            msgStatus('', '');
+        } catch (e) {
+            // em segundo plano só avisa quando não há conversas na tela (senão a caixa ficaria em branco, sem explicação)
+            if (!interno || msgConversas === null) { msgErro = mensagemErroAdmin(e, 'carregar as mensagens'); msgStatus('⚠️ ' + msgErro + (msgConversas ? ' Mostrando as conversas da última vez que carregou.' : ''), 'erro'); }
+        } finally {
+            msgCarregando = false;
+            renderizarConversas();
+            atualizarSelosConta();
+        }
+    }
+
+    function renderizarConversas() {
+        const lista = document.getElementById('msgLista');
+        if (!lista) return;
+        if (msgConversas === null) {
+            lista.innerHTML = msgCarregando ? '<div class="card"><p class="chat-vazio">Carregando...</p></div>' : '';
+            return;
+        }
+        if (!msgConversas.length) {
+            lista.innerHTML = '<div class="card"><p class="chat-vazio">Nenhuma mensagem ainda.<br>Quando um técnico escrever pra você, a conversa aparece aqui.</p></div>';
+            return;
+        }
+        lista.innerHTML = msgConversas.map(c => {
+            const n = Number(c.nao_lidas) || 0;
+            const total = Number(c.total) || 0;
+            const previa = (c.ultimo_autor === 'admin' ? 'Você: ' : '') + (c.ultimo_texto || '');
+            return '<div class="card msg-conversa' + (n ? ' nova' : '') + '" role="button" tabindex="0" data-uid="' + escaparHtml(c.user_id) + '" data-email="' + escaparHtml(c.email || '') + '">' +
+                '<div class="msg-topo"><b class="admin-email">' + escaparHtml(c.email || '(sem e-mail)') + '</b>' + (n ? '<span class="selo">' + (n > 99 ? '99+' : n) + '</span>' : '') + '</div>' +
+                '<div class="msg-previa">' + escaparHtml(previa) + '</div>' +
+                '<div class="msg-hora">' + formatarHoraCurta(c.ultima_em) + ' · ' + (total === 1 ? '1 mensagem' : total + ' mensagens') + '</div></div>';
+        }).join('');
+    }
+
+    function renderizarThread(rolar) {
+        const box = document.getElementById('msgThread');
+        const tit = document.getElementById('msgThreadTitulo');
+        if (!box) return;
+        if (tit) tit.textContent = msgAberta ? (msgAberta.email || '(sem e-mail)') : '';
+        if (msgThread === null) box.innerHTML = '<div class="chat-vazio">' + (msgThreadFalhou ? 'Não consegui abrir esta conversa. O motivo está logo abaixo.' : 'Carregando...') + '</div>';
+        else box.innerHTML = msgThread.length ? msgThread.map(m => chatBolhaHtml(m, false)).join('') : '<div class="chat-vazio">Sem mensagens.</div>';
+        if (rolar) box.scrollTop = box.scrollHeight;
+    }
+
+    function msgContarResposta() {
+        const campo = document.getElementById('msgResposta');
+        const c = document.getElementById('msgRespContador');
+        if (campo && c) c.textContent = campo.value.length + '/1000';
+    }
+
+    function atualizarBotaoResposta() {
+        const b = document.getElementById('msgEnviarBtn');
+        if (!b) return;
+        b.disabled = msgOcupado;
+        b.textContent = msgOcupado ? '⏳ Enviando...' : '📨 Enviar resposta';
+    }
+
+    async function adminAbrirConversa(uid, email) {
+        if (!uid) return;
+        msgAberta = { user_id: uid, email: email || '' };
+        msgThread = null;
+        msgThreadFalhou = false;
+        msgThreadStatus('', '');
+        const lv = document.getElementById('msgListaView');
+        const tv = document.getElementById('msgThreadView');
+        if (lv) lv.hidden = true;
+        if (tv) tv.hidden = false;
+        const campo = document.getElementById('msgResposta');
+        if (campo) { campo.value = ''; msgContarResposta(); }
+        renderizarThread(false);
+        try {
+            if (!navigator.onLine) throw new Error('__offline__');
+            const r = await chamarRpcAdmin('admin_ler_conversa', { p_user: uid });
+            if (!msgAberta || msgAberta.user_id !== uid) return;   // fechou ou trocou de conversa enquanto carregava
+            msgThread = Array.isArray(r) ? r : [];
+            const c = (msgConversas || []).find(x => x.user_id === uid);
+            if (c) c.nao_lidas = 0;                                  // o servidor marcou as do técnico como lidas
+            indicadores.msgs = somaNaoLidas();
+        } catch (e) {
+            if (msgAberta && msgAberta.user_id === uid) { msgThreadFalhou = true; msgThreadStatus('⚠️ ' + mensagemErroAdmin(e, 'abrir a conversa'), 'erro'); }
+        }
+        if (msgAberta && msgAberta.user_id === uid) renderizarThread(true);
+        atualizarSelosConta();
+    }
+
+    // Atualiza a conversa aberta sem mexer no que o admin está digitando.
+    async function adminRecarregarThread() {
+        if (!msgAberta || msgOcupado) return;
+        const uid = msgAberta.user_id;
+        try {
+            const r = await chamarRpcAdmin('admin_ler_conversa', { p_user: uid });
+            if (!msgAberta || msgAberta.user_id !== uid) return;
+            msgThread = Array.isArray(r) ? r : [];
+            const c = (msgConversas || []).find(x => x.user_id === uid);
+            if (c) c.nao_lidas = 0;
+            indicadores.msgs = somaNaoLidas();
+            renderizarThread(true);
+            atualizarSelosConta();
+        } catch (e) { /* tenta de novo na próxima verificação */ }
+    }
+
+    function adminFecharConversa() {
+        msgAberta = null;
+        msgThread = null;
+        msgThreadFalhou = false;
+        const lv = document.getElementById('msgListaView');
+        const tv = document.getElementById('msgThreadView');
+        if (lv) lv.hidden = false;
+        if (tv) tv.hidden = true;
+        renderizarConversas();
+        adminCarregarConversas(true, true);
+    }
+
+    async function adminEnviarResposta() {
+        if (msgOcupado || !msgAberta) return;
+        const campo = document.getElementById('msgResposta');
+        const texto = campo ? campo.value.trim() : '';
+        if (!texto) { msgThreadStatus('Escreva a resposta antes de enviar.', 'erro'); if (campo) campo.focus(); return; }
+        const uid = msgAberta.user_id;
+        msgOcupado = true;
+        atualizarBotaoResposta();
+        msgThreadStatus('', '');
+        try {
+            if (!navigator.onLine) throw new Error('__offline__');
+            const r = await chamarRpcAdmin('admin_responder', { p_user: uid, p_texto: texto });
+            const nova = Array.isArray(r) ? r[0] : r;
+            const reg = (nova && nova.id) ? nova : { id: -Date.now(), autor: 'admin', texto: texto, criado_em: new Date().toISOString(), lida: false };
+            if (msgAberta && msgAberta.user_id === uid) {
+                msgThread = (msgThread || []).concat([reg]);
+                if (campo) { campo.value = ''; msgContarResposta(); }
+                renderizarThread(true);
+                msgThreadStatus('✅ Resposta enviada.', 'ok');
+            }
+            const c = (msgConversas || []).find(x => x.user_id === uid);
+            if (c) {
+                c.ultimo_autor = 'admin'; c.ultimo_texto = String(reg.texto || texto).slice(0, 160); c.ultima_em = reg.criado_em;
+                c.total = (Number(c.total) || 0) + 1; c.nao_lidas = 0;
+                msgConversas.sort((a, b) => (Date.parse(b.ultima_em) || 0) - (Date.parse(a.ultima_em) || 0));
+                indicadores.msgs = somaNaoLidas();
+            }
+        } catch (e) {
+            msgThreadStatus('⚠️ ' + mensagemErroAdmin(e, 'enviar a resposta') + ' Sua resposta continua escrita aqui.', 'erro');
+        } finally {
+            msgOcupado = false;
+            atualizarBotaoResposta();
+            atualizarSelosConta();
+        }
+    }
+
+    // ---------- ligações dos elementos (cliques na lista de pendentes e nas conversas) ----------
+    (function () {
+        const pl = document.getElementById('pendLista');
+        if (pl) {
+            pl.addEventListener('change', function (ev) {
+                const chk = ev.target && ev.target.closest ? ev.target.closest('.pend-chk') : null;
+                const item = chk ? chk.closest('.pend-item') : null;
+                if (item) pendMarcar(item.getAttribute('data-email'), chk.checked);
+            });
+            pl.addEventListener('click', function (ev) {
+                const b = ev.target && ev.target.closest ? ev.target.closest('.pend-confirmar') : null;
+                const item = b ? b.closest('.pend-item') : null;
+                if (item) adminConfirmarUm(item.getAttribute('data-email'));
+            });
+        }
+        const ml = document.getElementById('msgLista');
+        if (ml) {
+            const abrir = function (ev) {
+                const c = ev.target && ev.target.closest ? ev.target.closest('.msg-conversa') : null;
+                if (c) adminAbrirConversa(c.getAttribute('data-uid'), c.getAttribute('data-email'));
+            };
+            ml.addEventListener('click', abrir);
+            ml.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); abrir(ev); }
+            });
+        }
+        const mr = document.getElementById('msgResposta');
+        if (mr) mr.addEventListener('input', msgContarResposta);
+    })();
+
+    // ==================================================================
+    // v1.10.0 — CHAT "FALE COM O BRUNO" (técnico -> administrador)
+    // Fica na tela "Minha conta". Cada técnico só enxerga a própria
+    // conversa (regra no servidor: RLS da tabela "mensagens"); o limite
+    // é de 20 mensagens por hora. Não é em tempo real: a resposta
+    // aparece quando a pessoa abre a tela, ao tocar em Atualizar, ou na
+    // verificação automática (a cada 90 s com o app aberto), e o botão
+    // "Minha conta" + o menu de baixo ganham um aviso vermelho.
+    // Precisa de internet; o texto digitado fica guardado como rascunho.
+    // O administrador não vê este cartão (ele responde pelo painel Admin).
+    // ==================================================================
+    var chatMsgs = null;          // [{ id, autor, texto, criado_em, lida }] da conversa desta conta
+    var chatCarregando = false;
+    var chatEnviando = false;
+    var chatErroCarga = '';
+    var chatHtmlAtual = '';
+
+    function chatChaveRascunho() { const s = getSessao(); return 'chat_rascunho_' + (s && s.user_id ? s.user_id : ''); }
+    function chatLerRascunho() { try { return localStorage.getItem(chatChaveRascunho()) || ''; } catch (e) { return ''; } }
+    function chatSalvarRascunho(t) {
+        try { if (t) localStorage.setItem(chatChaveRascunho(), t); else localStorage.removeItem(chatChaveRascunho()); } catch (e) {}
+    }
+
+    function chatStatus(texto, tipo) {
+        const el = document.getElementById('chatStatus');
+        if (!el) return;
+        el.textContent = texto || '';
+        el.className = 'fb' + (tipo === 'ok' ? ' fb-ok' : (tipo === 'erro' ? ' fb-erro' : ''));
+    }
+
+    function mensagemErroChat(e, acao) {
+        const b = erroBase(e);
+        if (b) return b;
+        if (e && e.status === 403) return 'Não consegui ' + acao + ' (sem permissão). Saia da conta e entre de novo.';
+        return 'Não deu pra ' + acao + ' (' + ((e && e.message) ? e.message : 'erro desconhecido') + ').';
+    }
+
+    // Uma bolha de mensagem. souTecnico=true: tela do técnico (as dele à direita, as do Bruno à esquerda);
+    // souTecnico=false: tela do admin (as do admin à direita, as do técnico à esquerda).
+    function chatBolhaHtml(m, souTecnico) {
+        const minha = souTecnico ? m.autor === 'tecnico' : m.autor === 'admin';
+        const nova = !minha && !m.lida;
+        const rotulo = !minha ? (souTecnico ? '<b>Bruno' + (nova ? ' · resposta nova' : '') + '</b>' : (nova ? '<b>Mensagem nova</b>' : '')) : '';
+        return '<div class="chat-bolha ' + (minha ? 'chat-minha' : 'chat-dele') + '">' + rotulo +
+            escaparHtml(m.texto) + '<small>' + formatarHoraCurta(m.criado_em) + '</small></div>';
+    }
+
+    function chatVisivelAgora() {
+        const aba = document.getElementById('tab-conta');
+        const card = document.getElementById('cardChat');
+        return !!(aba && aba.classList.contains('active') && contaVista === 'conta' && card && !card.hidden && document.visibilityState !== 'hidden');
+    }
+
+    // O cartão só aparece para quem está logado e NÃO é admin.
+    function chatAtualizarVisibilidade() {
+        const card = document.getElementById('cardChat');
+        if (!card) return;
+        card.hidden = !(sbConfigurado() && estaLogado() && !adminAtivo);
+    }
+
+    function chatAtualizarContador() {
+        const campo = document.getElementById('chatTexto');
+        const c = document.getElementById('chatContador');
+        if (campo && c) c.textContent = campo.value.length + '/1000';
+    }
+
+    function chatRender(rolar) {
+        const box = document.getElementById('chatConversa');
+        if (!box) return;
+        let html;
+        if (chatMsgs === null) {
+            html = '<div class="chat-vazio">' + escaparHtml(chatErroCarga || (chatCarregando ? 'Carregando a conversa...' : 'Toque em Atualizar para ver a conversa.')) + '</div>';
+        } else if (!chatMsgs.length) {
+            html = '<div class="chat-vazio">Ainda não tem mensagens aqui.<br>Escreva a primeira lá embaixo 👇</div>';
+        } else {
+            html = chatMsgs.map(m => chatBolhaHtml(m, true)).join('');
+        }
+        if (html !== chatHtmlAtual) { box.innerHTML = html; chatHtmlAtual = html; }   // só mexe se mudou (não pisca nem perde a rolagem)
+        if (rolar) box.scrollTop = box.scrollHeight;
+    }
+
+    // Chamado quando a tela "Minha conta" aparece.
+    function chatAoAbrir() {
+        chatAtualizarVisibilidade();
+        const card = document.getElementById('cardChat');
+        if (!card || card.hidden) return;
+        const campo = document.getElementById('chatTexto');
+        if (campo && !campo.value) { campo.value = chatLerRascunho(); chatAtualizarContador(); }
+        chatRender(false);
+        chatCarregar(false);
+    }
+
+    async function chatCarregar(silencioso) {
+        if (chatCarregando || !estaLogado() || adminAtivo) return;
+        chatCarregando = true;
+        if (chatMsgs === null) chatRender(false);
+        try {
+            if (!navigator.onLine) throw new Error('__offline__');
+            const r = await chamarApi('mensagens?select=id,autor,texto,criado_em,lida&order=criado_em.desc,id.desc&limit=100');
+            chatMsgs = Array.isArray(r) ? r.slice().reverse() : [];
+            chatErroCarga = '';
+            if (!silencioso) chatStatus('', '');
+            chatRender(true);
+            const novas = chatMsgs.filter(m => m.autor === 'admin' && !m.lida).length;
+            if (novas > 0 && chatVisivelAgora()) {
+                // a pessoa está vendo a conversa: as respostas contam como lidas
+                try { await chamarApi('rpc/marcar_respostas_lidas', { metodo: 'POST', corpo: {} }); indicadores.respostas = 0; } catch (e) { indicadores.respostas = novas; }
+            } else {
+                indicadores.respostas = novas;
+            }
+        } catch (e) {
+            if (chatMsgs === null) chatErroCarga = mensagemErroChat(e, 'carregar a conversa');
+            else if (!silencioso) chatStatus('⚠️ ' + mensagemErroChat(e, 'atualizar a conversa'), 'erro');
+            chatRender(false);
+        } finally {
+            chatCarregando = false;
+            atualizarSelosConta();
+        }
+    }
+
+    // Verificação leve (só conta quantas respostas novas existem). Se a pessoa está olhando a conversa, já mostra.
+    async function chatVerificarRespostas() {
+        const r = await chamarApi('mensagens?select=id&autor=eq.admin&lida=eq.false&limit=99');
+        const n = Array.isArray(r) ? r.length : 0;
+        indicadores.respostas = n;
+        if (n > 0 && chatVisivelAgora()) await chatCarregar(true);
+    }
+
+    async function chatEnviar() {
+        if (chatEnviando) return;
+        const campo = document.getElementById('chatTexto');
+        const botao = document.getElementById('chatEnviarBtn');
+        if (!campo) return;
+        const texto = campo.value.trim();
+        if (!texto) { chatStatus('Escreva sua mensagem antes de enviar.', 'erro'); campo.focus(); return; }
+        if (texto.length > 1000) { chatStatus('A mensagem passou de 1000 letras. Encurte um pouco e envie de novo.', 'erro'); return; }
+        if (!navigator.onLine) { chatStatus('⚠️ Sem internet agora. Sua mensagem continua escrita aqui: é só enviar quando tiver sinal.', 'erro'); return; }
+        chatEnviando = true;
+        if (botao) { botao.disabled = true; botao.textContent = '⏳ Enviando...'; }
+        chatStatus('', '');
+        try {
+            const r = await chamarApi('mensagens', { metodo: 'POST', corpo: { texto: texto }, preferir: 'return=representation' });
+            const nova = Array.isArray(r) ? r[0] : r;
+            const reg = (nova && nova.id) ? nova : { id: -Date.now(), autor: 'tecnico', texto: texto, criado_em: new Date().toISOString(), lida: false };
+            chatMsgs = (chatMsgs || []).concat([reg]);
+            campo.value = '';
+            chatSalvarRascunho('');
+            chatAtualizarContador();
+            chatRender(true);
+            chatStatus('✅ Mensagem enviada! O Bruno responde assim que puder, e a resposta aparece aqui.', 'ok');
+        } catch (e) {
+            chatStatus('⚠️ ' + mensagemErroChat(e, 'enviar a mensagem') + ' Sua mensagem continua escrita aqui.', 'erro');
+        } finally {
+            chatEnviando = false;
+            if (botao) { botao.disabled = false; botao.textContent = '📨 Enviar mensagem'; }
+        }
+    }
+
+    // Ao sair da conta: esvazia a tela do chat (o rascunho fica guardado só para essa conta, neste aparelho).
+    function chatLimpar() {
+        chatMsgs = null; chatCarregando = false; chatEnviando = false; chatErroCarga = ''; chatHtmlAtual = '';
+        const c = document.getElementById('chatConversa'); if (c) c.innerHTML = '';
+        const t = document.getElementById('chatTexto'); if (t) { t.value = ''; chatAtualizarContador(); }
+        const b = document.getElementById('chatEnviarBtn'); if (b) { b.disabled = false; b.textContent = '📨 Enviar mensagem'; }
+        chatStatus('', '');
+        chatAtualizarVisibilidade();
+    }
+
+    (function () {
+        const campo = document.getElementById('chatTexto');
+        if (campo) campo.addEventListener('input', function () { chatAtualizarContador(); chatSalvarRascunho(campo.value); });
+    })();
 
     atualizarIndicadorVersao();
     verificarAtualizacao();
