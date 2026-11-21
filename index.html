@@ -629,7 +629,7 @@ select[multiple] { height: auto; }
                 </div>
                 <div class="form-group">
                     <label>Observação (Opcional):</label>
-                    <input type="text" id="obsInput" placeholder="Ex: OS número XXXXX">
+                    <input type="text" id="obsInput" maxlength="1000" placeholder="Ex: OS número XXXXX">
                 </div>
                 <button type="submit" style="background: var(--success); color: var(--on-success);">Salvar Lançamento</button>
             </form>
@@ -679,7 +679,7 @@ select[multiple] { height: auto; }
             <form id="formConfigServico">
                 <div class="form-group">
                     <label>Nome da Atividade:</label>
-                    <input type="text" id="cfgNome" placeholder="Ex: REPARO GPON" required>
+                    <input type="text" id="cfgNome" maxlength="300" placeholder="Ex: REPARO GPON" required>
                 </div>
                 <div class="dashboard-grid">
                     <div class="form-group">
@@ -1060,6 +1060,148 @@ select[multiple] { height: auto; }
     }
     migrarDados();
 
+    // ==================================================================
+    // v1.10.1 — SEGURANÇA
+    //  1) Tudo que ENTRA no app vindo de fora (backup importado, nuvem) é conferido e limpo antes de virar dado.
+    //  2) Tudo que vira TELA passa por htmlSeguro()/escaparHtml() (nenhum texto cru dentro de innerHTML).
+    //  3) A atualização automática só é salva se o arquivo baixado for mesmo a versão anunciada.
+    //  4) Login do Google só vale se foi o próprio usuário que tocou no botão (janela de 10 minutos).
+    //  5) Sair da conta também cancela a sessão no servidor.
+    //  6) Planilha CSV sem fórmulas escondidas em texto.
+    // ==================================================================
+    const LIMITE_BACKUP_CARACTERES = 5 * 1024 * 1024;   // backup de verdade tem poucas centenas de KB
+    const LIMITE_LOGS_BACKUP = 50000;
+    const LIMITE_SERVICOS_BACKUP = 5000;
+    const GOOGLE_PENDENTE_CHAVE = 'google_login_pendente_em';
+    const GOOGLE_PENDENTE_MS = 10 * 60 * 1000;
+
+    function htmlSeguro(v) { return escaparHtml(v === null || v === undefined ? '' : v); }
+
+    // ---- limpeza de dados que vêm de fora ----
+    function segTexto(v, max) {
+        if (typeof v === 'number' || typeof v === 'boolean') v = String(v);
+        if (typeof v !== 'string') return '';
+        v = v.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');   // sem caracteres de controle (menos tab/enter)
+        return v.length > max ? v.slice(0, max) : v;
+    }
+    function segNumero(v, padrao) {
+        const n = typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN);
+        return Number.isFinite(n) ? n : padrao;
+    }
+    function segId(v) {
+        const n = segNumero(v, null);
+        return (n !== null && Number.isSafeInteger(n) && n > 0) ? n : null;
+    }
+    function segData(v) {
+        if (typeof v !== 'string') return null;
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+        if (!m) return null;
+        const ano = +m[1], mes = +m[2], dia = +m[3];
+        return (ano >= 1990 && ano <= 2100 && mes >= 1 && mes <= 12 && dia >= 1 && dia <= 31) ? v : null;
+    }
+    // estrito = true (dados da nuvem): id inválido derruba o registro; falso (backup): ganha um id novo
+    function segLog(r, estrito) {
+        if (!r || typeof r !== 'object' || Array.isArray(r)) return null;
+        const data = segData(r.data);
+        const atividade = segTexto(r.atividade, 300);
+        const pontos = segNumero(r.pontos, null);
+        if (data === null || !atividade.trim() || pontos === null || Math.abs(pontos) > 100000) return null;
+        let id = segId(r.id);
+        if (id === null) { if (estrito) return null; id = gerarId(); }
+        return {
+            id: id, data: data, atividade: atividade, pontos: pontos,
+            tec: segTexto(r.tec, 40), obs: segTexto(r.obs, 1000),
+            updatedAt: segNumero(r.updatedAt, Date.now()), synced: !!r.synced, deletado: !!r.deletado
+        };
+    }
+    function segServico(r, estrito) {
+        if (!r || typeof r !== 'object' || Array.isArray(r)) return null;
+        const nome = segTexto(r.nome, 300);
+        const pontos = segNumero(r.pontos, null);
+        if (!nome.trim() || pontos === null || Math.abs(pontos) > 100000) return null;
+        let id = segId(r.id);
+        if (id === null) { if (estrito) return null; id = gerarId(); }
+        return {
+            id: id, nome: nome, pontos: pontos, tec: segTexto(r.tec, 40),
+            updatedAt: segNumero(r.updatedAt, Date.now()), synced: !!r.synced, deletado: !!r.deletado
+        };
+    }
+
+    // ---- atualização automática ----
+    function versaoValida(v) { return typeof v === 'string' && /^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(v); }
+    // o manifesto pode indicar a URL do index.html, mas só dentro do mesmo site/pasta do app; fora disso usa a padrão
+    function urlAtualizacaoSegura(urlDoManifesto) {
+        const base = URL_MANIFESTO_ATUALIZACAO.replace('version.json', '');
+        const padrao = base + 'index.html';
+        const ok = typeof urlDoManifesto === 'string' && urlDoManifesto.length < 300 && urlDoManifesto.indexOf(base) === 0 &&
+                   !/[\s"'<>\\]/.test(urlDoManifesto) && urlDoManifesto.indexOf('..') === -1;
+        return ok ? urlDoManifesto : padrao;
+    }
+    // o arquivo baixado precisa ser o app inteiro E ter exatamente a versão anunciada no version.json
+    // (se o version.json subiu antes do index.html, não guarda a versão velha como se fosse a nova)
+    function htmlAtualizacaoConfere(html, versao) {
+        return typeof html === 'string' && html.length >= 50000 && versaoValida(versao) &&
+               html.indexOf("const APP_VERSAO_ATUAL = '" + versao + "';") !== -1 && html.indexOf('</html>') !== -1;
+    }
+
+    // ---- login do Google: só vale se o usuário acabou de tocar no botão ----
+    function googleMarcarPendente() {
+        try { localStorage.setItem(GOOGLE_PENDENTE_CHAVE, String(Date.now())); } catch (e) {}
+    }
+    function googleConsumirPendente() {
+        let t = 0;
+        try {
+            t = parseInt(localStorage.getItem(GOOGLE_PENDENTE_CHAVE) || '0', 10) || 0;
+            localStorage.removeItem(GOOGLE_PENDENTE_CHAVE);
+        } catch (e) {}
+        const idade = Date.now() - t;
+        return t > 0 && idade >= -5000 && idade < GOOGLE_PENDENTE_MS;
+    }
+    // as pontes do Android chamam estas duas funções (ficam prontas desde a abertura, para o caso do app ter sido
+    // fechado pelo sistema enquanto o usuário estava no navegador do Google)
+    window.receberResultadoLoginGoogle = function (accessToken, refreshToken, expiresIn) {
+        if (!googleConsumirPendente()) { console.warn('Retorno do login do Google ignorado: nenhum pedido de login em andamento.'); return; }
+        processarLoginGoogle(accessToken, refreshToken, expiresIn);
+    };
+    window.receberErroLoginGoogle = function (msg) {
+        if (!googleConsumirPendente()) return;
+        mostrarMensagem('Erro no login com Google: ' + msg);
+    };
+
+    // ---- sair da conta: cancela também no servidor (o código de renovação guardado deixa de funcionar) ----
+    async function revogarSessaoNoServidor(s) {
+        try {
+            if (!s || !s.access_token || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+            let token = s.access_token;
+            if (s.expira_em && Date.now() >= s.expira_em - 30000 && s.refresh_token) {   // token de acesso já venceu: renova só pra poder cancelar
+                const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+                    method: 'POST',
+                    headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: s.refresh_token })
+                });
+                if (!r.ok) return;
+                const d = await r.json();
+                if (!d || !d.access_token) return;
+                token = d.access_token;
+            }
+            await fetch(`${SUPABASE_URL}/auth/v1/logout?scope=local`, {
+                method: 'POST',
+                headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + token }
+            });
+        } catch (e) { /* sem internet ou erro: a sessão deste aparelho já foi apagada de qualquer jeito */ }
+    }
+
+    // ---- CSV: texto que começa com = + - @ vira fórmula no Excel; o apóstrofo na frente impede ----
+    function csvTexto(v) {
+        let s = String(v === null || v === undefined ? '' : v).replace(/[\r\n]+/g, ' ').replace(/;/g, ',');
+        if (/^[=+\-@\t]/.test(s)) s = "'" + s;
+        if (s.indexOf('"') !== -1) s = '"' + s.replace(/"/g, '""') + '"';
+        return s;
+    }
+    function csvNumero(v) {
+        return (typeof v === 'number' && isFinite(v)) ? String(v).replace('.', ',') : csvTexto(v);
+    }
+
     function logsAtivos() { return logs.filter(l => !l.deletado); }
     function bancoDadosAtivos() { return bancoDados.filter(b => !b.deletado); }
 
@@ -1105,7 +1247,7 @@ select[multiple] { height: auto; }
         bancoDadosAtivos().sort((a,b) => a.nome.localeCompare(b.nome)).forEach(item => {
             let opt = document.createElement('option');
             opt.value = item.nome;
-            opt.innerHTML = `${item.nome} (${item.pontos.toFixed(1)} pts)`;
+            opt.textContent = `${item.nome} (${Number(item.pontos).toFixed(1)} pts)`;
             select.appendChild(opt);
         });
     }
@@ -1141,8 +1283,11 @@ select[multiple] { height: auto; }
         e.preventDefault();
         const data = document.getElementById('dataInput').value;
         const atividade = document.getElementById('atividadeInput').value;
-        const obs = document.getElementById('obsInput').value;
+        const obs = segTexto(document.getElementById('obsInput').value, 1000);
         const servico = bancoDadosAtivos().find(b => b.nome === atividade);
+
+        // v1.10.1: o servidor só aceita datas de 1990 a 2100 (um ano digitado errado, como 0026, travaria a sincronização)
+        if (segData(data) === null) { mostrarMensagem('Data inválida. Confira o ano (de 1990 a 2100).'); return; }
 
         if(servico) {
             logs.push({
@@ -1180,10 +1325,10 @@ select[multiple] { height: auto; }
         [...logsAtivos()].reverse().slice(0, 15).forEach(log => {
             tbody.innerHTML += `
                 <tr>
-                    <td>${log.data.split('-').reverse().join('/')}</td>
-                    <td>${log.atividade} ${log.obs ? `<br><small style="color:var(--muted)">Obs: ${log.obs}</small>` : ''} ${!log.synced ? '<br><small style="color:var(--warn);">⏳ não sincronizado</small>' : ''}</td>
-                    <td><strong>${log.pontos}</strong></td>
-                    <td><button class="delete-btn" onclick="deletarLog(${log.id})">X</button></td>
+                    <td>${htmlSeguro(String(log.data || '').split('-').reverse().join('/'))}</td>
+                    <td>${htmlSeguro(log.atividade)} ${log.obs ? `<br><small style="color:var(--muted)">Obs: ${htmlSeguro(log.obs)}</small>` : ''} ${!log.synced ? '<br><small style="color:var(--warn);">⏳ não sincronizado</small>' : ''}</td>
+                    <td><strong>${htmlSeguro(log.pontos)}</strong></td>
+                    <td><button class="delete-btn" onclick="deletarLog(${Number(log.id)})">X</button></td>
                 </tr>`;
         });
     }
@@ -1194,6 +1339,10 @@ select[multiple] { height: auto; }
         const nome = document.getElementById('cfgNome').value.trim().toUpperCase();
         const pontos = parseFloat(document.getElementById('cfgPontos').value);
         const tec = document.getElementById('cfgTecnologia').value;
+
+        // v1.10.1: limites que o servidor também confere (nome de 1 a 300 letras; pontos de -100000 a 100000)
+        if (!nome || nome.length > 300) { mostrarMensagem('O nome da atividade precisa ter de 1 a 300 letras.'); return; }
+        if (!Number.isFinite(pontos) || Math.abs(pontos) > 100000) { mostrarMensagem('Pontuação inválida. Use um número entre -100000 e 100000.'); return; }
 
         const indexExistente = bancoDadosAtivos().findIndex(b => b.nome.toUpperCase() === nome);
         const existente = indexExistente > -1 ? bancoDadosAtivos()[indexExistente] : null;
@@ -1246,7 +1395,7 @@ select[multiple] { height: auto; }
         document.getElementById('cfgPontos').value = item.pontos;
         document.getElementById('cfgTecnologia').value = item.tec;
 
-        document.getElementById('avisoModoServico').innerHTML = `Editando "<strong>${item.nome}</strong>" — altere os pontos e clique em Atualizar. O nome não deve ser mudado, senão vira um serviço novo.`;
+        document.getElementById('avisoModoServico').innerHTML = `Editando "<strong>${htmlSeguro(item.nome)}</strong>" — altere os pontos e clique em Atualizar. O nome não deve ser mudado, senão vira um serviço novo.`;
         document.getElementById('btnSalvarServico').textContent = 'Atualizar Serviço';
         document.getElementById('btnCancelarEdicaoServico').style.display = 'inline-block';
 
@@ -1268,13 +1417,13 @@ select[multiple] { height: auto; }
         bancoDadosAtivos().sort((a,b) => a.nome.localeCompare(b.nome)).forEach(item => {
             tbody.innerHTML += `
                 <tr>
-                    <td>${item.nome} ${!item.synced ? '<br><small style="color:var(--warn);">⏳ não sincronizado</small>' : ''}</td>
-                    <td><strong>${item.pontos}</strong></td>
-                    <td><span class="badge">${item.tec}</span></td>
+                    <td>${htmlSeguro(item.nome)} ${!item.synced ? '<br><small style="color:var(--warn);">⏳ não sincronizado</small>' : ''}</td>
+                    <td><strong>${htmlSeguro(item.pontos)}</strong></td>
+                    <td><span class="badge">${htmlSeguro(item.tec)}</span></td>
                     <td>
                         <div class="btn-linha">
-                            <button class="btn-secundario" style="margin-top:0;" onclick="editarServico(${item.id})">Editar</button>
-                            <button class="delete-btn" onclick="deletarServico(${item.id})">Apagar</button>
+                            <button class="btn-secundario" style="margin-top:0;" onclick="editarServico(${Number(item.id)})">Editar</button>
+                            <button class="delete-btn" onclick="deletarServico(${Number(item.id)})">Apagar</button>
                         </div>
                     </td>
                 </tr>`;
@@ -1343,8 +1492,8 @@ select[multiple] { height: auto; }
         cont.innerHTML = meses.map(ym => {
             const qtd = logsAtivos().filter(l => l.data.slice(0, 7) === ym).length;
             return `<label>
-                <input type="checkbox" class="chk-mes" value="${ym}">
-                ${nomeMes(ym)} <span class="badge">${qtd} lanç.</span>
+                <input type="checkbox" class="chk-mes" value="${htmlSeguro(ym)}">
+                ${htmlSeguro(nomeMes(ym))} <span class="badge">${qtd} lanç.</span>
             </label>`;
         }).join('');
     }
@@ -1485,12 +1634,12 @@ select[multiple] { height: auto; }
         dados.forEach(d => {
             d.logs.forEach(l => {
                 linhas.push([
-                    d.nome,
-                    l.data.split('-').reverse().join('/'),
-                    l.atividade,
-                    l.tec || '',
-                    String(l.pontos).replace('.', ','),
-                    (l.obs || '').replace(/;/g, ',')
+                    csvTexto(d.nome),
+                    csvTexto(String(l.data || '').split('-').reverse().join('/')),
+                    csvTexto(l.atividade),
+                    csvTexto(l.tec || ''),
+                    csvNumero(l.pontos),
+                    csvTexto(l.obs || '')
                 ].join(';'));
             });
             linhas.push('');
@@ -1777,6 +1926,10 @@ select[multiple] { height: auto; }
     let backupCarregado = null;
 
     function processarTextoBackup(texto) {
+        if (typeof texto !== 'string' || texto.length > LIMITE_BACKUP_CARACTERES) {
+            mostrarMensagem('Este arquivo é grande demais para ser um backup deste app (limite de 5 MB). Nada foi carregado.');
+            return;
+        }
         let dados;
         try {
             dados = JSON.parse(texto);
@@ -1788,11 +1941,28 @@ select[multiple] { height: auto; }
             mostrarMensagem('Este arquivo/texto não parece ser um backup deste app (faltam os campos "logs" ou "bancoDados").');
             return;
         }
-        backupCarregado = dados;
-        const dataFormatada = dados.exportadoEm ? new Date(dados.exportadoEm).toLocaleString('pt-BR') : 'desconhecida';
+        if (dados.logs.length > LIMITE_LOGS_BACKUP || dados.bancoDados.length > LIMITE_SERVICOS_BACKUP) {
+            mostrarMensagem('Este backup tem registros demais para ser deste app. Nada foi carregado.');
+            return;
+        }
+        // v1.10.1: cada registro é conferido e limpo (tipos, datas, tamanhos); o que não servir é ignorado
+        const limposLogs = [];
+        const limposServicos = [];
+        let descartados = 0;
+        dados.logs.forEach(l => { const n = segLog(l, false); if (n) limposLogs.push(n); else descartados++; });
+        dados.bancoDados.forEach(b => { const n = segServico(b, false); if (n) limposServicos.push(n); else descartados++; });
+        if (limposLogs.length === 0 && limposServicos.length === 0 && descartados > 0) {
+            mostrarMensagem('Nenhum registro deste arquivo é válido. Nada foi carregado.');
+            return;
+        }
+        const exportadoEm = typeof dados.exportadoEm === 'string' ? dados.exportadoEm.slice(0, 40) : null;
+        backupCarregado = { exportadoEm: exportadoEm, logs: limposLogs, bancoDados: limposServicos };
+        const dataBruta = exportadoEm ? new Date(exportadoEm) : null;
+        const dataFormatada = dataBruta && !isNaN(dataBruta.getTime()) ? dataBruta.toLocaleString('pt-BR') : 'desconhecida';
         document.getElementById('infoBackup').innerHTML =
-            'Backup carregado: <strong>' + dados.logs.length + '</strong> lançamento(s) e <strong>' +
-            dados.bancoDados.length + '</strong> serviço(s) cadastrado(s).<br>Gerado em: ' + dataFormatada;
+            'Backup carregado: <strong>' + limposLogs.length + '</strong> lançamento(s) e <strong>' +
+            limposServicos.length + '</strong> serviço(s) cadastrado(s).<br>Gerado em: ' + htmlSeguro(dataFormatada) +
+            (descartados > 0 ? '<br><span style="color:var(--warn);">' + descartados + ' registro(s) com dados inválidos foram ignorados.</span>' : '');
         document.getElementById('previewBackup').style.display = 'block';
     }
 
@@ -1985,7 +2155,7 @@ select[multiple] { height: auto; }
     async function handleDefinirNovaSenha() {
         const novaSenha = document.getElementById('novaSenhaInput').value;
         const confirmar = document.getElementById('confirmarSenhaInput').value;
-        if (novaSenha.length < 6) { mostrarMensagem('A senha precisa ter pelo menos 6 caracteres.'); return; }
+        if (novaSenha.length < 8) { mostrarMensagem('A senha precisa ter pelo menos 8 caracteres.'); return; }
         if (novaSenha !== confirmar) { mostrarMensagem('As senhas digitadas não coincidem.'); return; }
         try {
             await definirNovaSenha(window._tokenRecuperacaoSenha, novaSenha);
@@ -2024,7 +2194,9 @@ select[multiple] { height: auto; }
     function sairConta() {
         confirmarAcao('Sair da conta? Os dados já sincronizados continuam guardados na nuvem, e os locais permanecem neste aparelho.', (ok) => {
             if (!ok) return;
+            const sessaoAnterior = getSessao();
             limparSessao();
+            revogarSessaoNoServidor(sessaoAnterior);   // v1.10.1: melhor esforço, em segundo plano
             if (typeof AndroidBiometric !== 'undefined') AndroidBiometric.removerSessaoSegura();
             desbloqueadoNestaSessao = false;
             atualizarTelaConta();
@@ -2060,34 +2232,36 @@ select[multiple] { height: auto; }
         const logsPendentes = logs.filter(l => !l.synced);
         const servicosPendentes = bancoDados.filter(b => !b.synced);
 
-        if (logsPendentes.length > 0) {
-            const payload = logsPendentes.map(l => ({
-                id: l.id, user_id: sessao.user_id, data: l.data, atividade: l.atividade,
-                pontos: l.pontos, tec: l.tec, obs: l.obs || '',
-                updated_at: l.updatedAt, deletado: !!l.deletado
-            }));
-            await sbFetch('lancamentos', {
-                method: 'POST',
-                headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-                body: JSON.stringify(payload)
-            });
-            logsPendentes.forEach(l => { l.synced = true; });
-        }
+        // v1.10.1: o servidor tem limites (data 1990–2100, tamanho dos textos, pontos). Um registro fora deles não pode
+        // travar o envio dos outros: ele fica só neste aparelho e a tela da Conta avisa. O envio vai em lotes de 500.
+        let foraDoLimite = 0;
+        const enviarEmLotes = async (tabela, itens, montar) => {
+            const validos = [];
+            itens.forEach(item => { const linha = montar(item); if (linha) validos.push({ item, linha }); else foraDoLimite++; });
+            for (let i = 0; i < validos.length; i += 500) {
+                const lote = validos.slice(i, i + 500);
+                await sbFetch(tabela, {
+                    method: 'POST',
+                    headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+                    body: JSON.stringify(lote.map(x => x.linha))
+                });
+                lote.forEach(x => { x.item.synced = true; });
+            }
+        };
 
-        if (servicosPendentes.length > 0) {
-            const payload = servicosPendentes.map(b => ({
-                id: b.id, user_id: sessao.user_id, nome: b.nome, pontos: b.pontos, tec: b.tec,
-                updated_at: b.updatedAt, deletado: !!b.deletado
-            }));
-            await sbFetch('servicos', {
-                method: 'POST',
-                headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-                body: JSON.stringify(payload)
-            });
-            servicosPendentes.forEach(b => { b.synced = true; });
-        }
+        await enviarEmLotes('lancamentos', logsPendentes, l => {
+            const v = segLog(l, true);
+            return v && { id: v.id, user_id: sessao.user_id, data: v.data, atividade: v.atividade,
+                          pontos: v.pontos, tec: v.tec, obs: v.obs, updated_at: v.updatedAt, deletado: v.deletado };
+        });
+        await enviarEmLotes('servicos', servicosPendentes, b => {
+            const v = segServico(b, true);
+            return v && { id: v.id, user_id: sessao.user_id, nome: v.nome, pontos: v.pontos, tec: v.tec,
+                          updated_at: v.updatedAt, deletado: v.deletado };
+        });
 
         salvarLocal();
+        if (foraDoLimite > 0) ultimoErroSync = foraDoLimite + ' registro(s) com dado fora do limite (data, tamanho ou pontos) não foram enviados e ficaram só neste aparelho.';
     }
 
     // Traz da nuvem o que ainda não existe (ou está mais novo) localmente
@@ -2095,32 +2269,41 @@ select[multiple] { height: auto; }
         const remotoLogs = await sbFetch('lancamentos?select=*', { method: 'GET' });
         const remotoServicos = await sbFetch('servicos?select=*', { method: 'GET' });
 
-        (remotoLogs || []).forEach(r => {
+        (Array.isArray(remotoLogs) ? remotoLogs : []).forEach(bruto => {
+            // v1.10.1: o que vem da nuvem é conferido e limpo antes de entrar (registro fora do formato é ignorado)
+            const b = bruto || {};
+            const r = segLog({ id: b.id, data: b.data, atividade: b.atividade, pontos: b.pontos, tec: b.tec, obs: b.obs,
+                               updatedAt: segNumero(b.updated_at, 0), deletado: b.deletado }, true);
+            if (!r) return;
             const local = logs.find(l => l.id === r.id);
             if (!local) {
                 logs.push({
                     id: r.id, data: r.data, atividade: r.atividade, pontos: r.pontos,
-                    tec: r.tec, obs: r.obs, updatedAt: r.updated_at, deletado: r.deletado, synced: true
+                    tec: r.tec, obs: r.obs, updatedAt: r.updatedAt, deletado: r.deletado, synced: true
                 });
-            } else if (r.updated_at > local.updatedAt) {
+            } else if (r.updatedAt > local.updatedAt) {
                 Object.assign(local, {
                     data: r.data, atividade: r.atividade, pontos: r.pontos, tec: r.tec,
-                    obs: r.obs, updatedAt: r.updated_at, deletado: r.deletado, synced: true
+                    obs: r.obs, updatedAt: r.updatedAt, deletado: r.deletado, synced: true
                 });
             }
         });
 
-        (remotoServicos || []).forEach(r => {
+        (Array.isArray(remotoServicos) ? remotoServicos : []).forEach(bruto => {
+            const s = bruto || {};
+            const r = segServico({ id: s.id, nome: s.nome, pontos: s.pontos, tec: s.tec,
+                                   updatedAt: segNumero(s.updated_at, 0), deletado: s.deletado }, true);
+            if (!r) return;
             const local = bancoDados.find(b => b.id === r.id);
             if (!local) {
                 bancoDados.push({
                     id: r.id, nome: r.nome, pontos: r.pontos, tec: r.tec,
-                    updatedAt: r.updated_at, deletado: r.deletado, synced: true
+                    updatedAt: r.updatedAt, deletado: r.deletado, synced: true
                 });
-            } else if (r.updated_at > local.updatedAt) {
+            } else if (r.updatedAt > local.updatedAt) {
                 Object.assign(local, {
                     nome: r.nome, pontos: r.pontos, tec: r.tec,
-                    updatedAt: r.updated_at, deletado: r.deletado, synced: true
+                    updatedAt: r.updatedAt, deletado: r.deletado, synced: true
                 });
             }
         });
@@ -2302,14 +2485,12 @@ select[multiple] { height: auto; }
     }
 
     function handleEntrarComGoogleGate() {
-        window.receberResultadoLoginGoogle = processarLoginGoogle;
-        window.receberErroLoginGoogle = (msg) => mostrarMensagem('Erro no login com Google: ' + msg);
+        googleMarcarPendente();   // v1.10.1: só aceita o retorno do Google se o usuário tocou no botão agora
         AndroidGoogleAuth.entrarComGoogle(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
 
     function handleEntrarComGoogleConta() {
-        window.receberResultadoLoginGoogle = processarLoginGoogle;
-        window.receberErroLoginGoogle = (msg) => mostrarMensagem('Erro no login com Google: ' + msg);
+        googleMarcarPendente();   // v1.10.1: só aceita o retorno do Google se o usuário tocou no botão agora
         AndroidGoogleAuth.entrarComGoogle(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
 
@@ -2329,7 +2510,7 @@ select[multiple] { height: auto; }
         const email = document.getElementById('gateEmail').value.trim();
         const senha = document.getElementById('gateSenha').value;
         if (!email || !senha) { mostrarMensagem('Preencha e-mail e senha.'); return; }
-        if (senha.length < 6) { mostrarMensagem('A senha precisa ter pelo menos 6 caracteres.'); return; }
+        if (senha.length < 8) { mostrarMensagem('A senha precisa ter pelo menos 8 caracteres.'); return; }
         try {
             const r = await cadastrarConta(email, senha);
             if (!r.access_token) {
@@ -2378,7 +2559,7 @@ select[multiple] { height: auto; }
         const email = document.getElementById('contaEmail').value.trim();
         const senha = document.getElementById('contaSenha').value;
         if (!email || !senha) { mostrarMensagem('Preencha e-mail e senha.'); return; }
-        if (senha.length < 6) { mostrarMensagem('A senha precisa ter pelo menos 6 caracteres.'); return; }
+        if (senha.length < 8) { mostrarMensagem('A senha precisa ter pelo menos 8 caracteres.'); return; }
         try {
             const r = await cadastrarConta(email, senha);
             if (!r.access_token) {
@@ -2467,7 +2648,7 @@ select[multiple] { height: auto; }
             const pendentes = logs.filter(l => !l.synced).length + bancoDados.filter(b => !b.synced).length;
             const ultimaSync = localStorage.getItem('sb_ultima_sync');
             area.innerHTML = `
-                <p>Logado como <strong>${sessao.email}</strong></p>
+                <p>Logado como <strong>${htmlSeguro(sessao.email)}</strong></p>
                 <p style="font-size:0.85rem; color:var(--muted);">
                     ${sincronizando ? '🔄 Sincronizando...' : (pendentes > 0 ? `⏳ ${pendentes} item(ns) pendente(s)` : '✅ Tudo sincronizado')}<br>
                     ${ultimaSync ? 'Última sincronização: ' + new Date(parseInt(ultimaSync)).toLocaleString('pt-BR') : 'Ainda não sincronizou'}
@@ -2477,7 +2658,7 @@ select[multiple] { height: auto; }
                     <button type="button" onclick="tentarSincronizar()">🔄 Sincronizar Agora</button>
                     <button type="button" class="btn-secundario" onclick="sairConta()">Sair</button>
                 </div>
-                ${ultimoErroSync ? `<p style="color:var(--danger-text); font-size:0.82rem; margin-top:10px; background:var(--danger-bg); padding:8px; border-radius:5px;">❌ Erro na última sincronização: ${ultimoErroSync}</p>` : ''}`;
+                ${ultimoErroSync ? `<p style="color:var(--danger-text); font-size:0.82rem; margin-top:10px; background:var(--danger-bg); padding:8px; border-radius:5px;">❌ Erro na última sincronização: ${htmlSeguro(ultimoErroSync)}</p>` : ''}`;
         }
     }
 
@@ -2494,7 +2675,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.10.0';
+    const APP_VERSAO_ATUAL = '1.10.1';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
@@ -2522,6 +2703,11 @@ select[multiple] { height: auto; }
                 return;
             }
             const manifesto = await respManifesto.json();
+            if (manifesto && manifesto.versao && !versaoValida(manifesto.versao)) {
+                if (manual) mostrarMensagem('O arquivo de versão publicado parece inválido — nada foi baixado.');
+                atualizarIndicadorVersao();
+                return;
+            }
 
             if (!manifesto.versao || manifesto.versao === APP_VERSAO_ATUAL) {
                 if (manual) mostrarMensagem('Você já está na versão mais recente (v' + APP_VERSAO_ATUAL + ').');
@@ -2535,7 +2721,7 @@ select[multiple] { height: auto; }
                 return;
             }
 
-            const urlHtml = manifesto.url || URL_MANIFESTO_ATUALIZACAO.replace('version.json', 'index.html');
+            const urlHtml = urlAtualizacaoSegura(manifesto.url);
             const respHtml = await fetch(urlHtml, { cache: 'no-store' });
             if (!respHtml.ok) {
                 if (manual) mostrarMensagem('Achou versão nova, mas falhou ao baixar. Tenta de novo.');
@@ -2544,8 +2730,8 @@ select[multiple] { height: auto; }
             }
             const htmlNovo = await respHtml.text();
 
-            if (htmlNovo.length < 1000) {
-                if (manual) mostrarMensagem('Resposta do servidor parece inválida — não foi salva.');
+            if (!htmlAtualizacaoConfere(htmlNovo, manifesto.versao)) {
+                if (manual) mostrarMensagem('A versão ' + manifesto.versao + ' ainda não terminou de subir no GitHub (o index.html e o version.json precisam ser enviados juntos). Nada foi guardado — tente de novo daqui a pouco.');
                 atualizarIndicadorVersao();
                 return;
             }
@@ -2580,7 +2766,7 @@ select[multiple] { height: auto; }
         const aviso = document.createElement('div');
         aviso.id = 'avisoAtualizacaoDisponivel';
         aviso.style.cssText = 'position:fixed; bottom:77px; left:10px; right:10px; background:var(--primary); color:var(--on-primary); padding:12px 14px; border-radius:8px; font-size:0.82rem; z-index:9999; box-shadow:0 2px 10px rgba(0,0,0,0.35);';
-        aviso.innerHTML = `📦 Nova versão (${versao}) baixada — será aplicada na próxima vez que você abrir o app. <span style="float:right; cursor:pointer; padding-left:10px;" onclick="document.getElementById('avisoAtualizacaoDisponivel').remove()">✕</span>`;
+        aviso.innerHTML = `📦 Nova versão (${htmlSeguro(versao)}) baixada — será aplicada na próxima vez que você abrir o app. <span style="float:right; cursor:pointer; padding-left:10px;" onclick="document.getElementById('avisoAtualizacaoDisponivel').remove()">✕</span>`;
         document.body.appendChild(aviso);
     }
 
@@ -2769,7 +2955,7 @@ select[multiple] { height: auto; }
                 return;
             }
             const manifesto = await resp.json();
-            if (!manifesto.versao || manifesto.versao === APP_VERSAO_ATUAL) {
+            if (!manifesto.versao || !versaoValida(manifesto.versao) || manifesto.versao === APP_VERSAO_ATUAL) {
                 if (manual) mostrarMensagem('Você já está na versão mais recente (v' + APP_VERSAO_ATUAL + ').');
                 atualizarIndicadorVersao();
                 return;
@@ -2849,7 +3035,7 @@ select[multiple] { height: auto; }
         if (/invalid login credentials/i.test(bruto)) return 'E-mail ou senha incorretos.';
         if (/email not confirmed/i.test(bruto)) return 'Você ainda não confirmou seu e-mail. Abra a mensagem de confirmação que enviamos (olhe também o spam), toque no link e depois volte aqui e toque em Entrar.';
         if (/user already registered|already been registered/i.test(bruto)) return 'Este e-mail já tem conta. Toque em Entrar (ou em "Esqueci minha senha", se não lembrar a senha).';
-        if (/password should be at least|weak.password/i.test(bruto)) return 'A senha precisa ter pelo menos 6 caracteres.';
+        if (/password should be at least|weak.password|pwned|leaked/i.test(bruto)) return 'Essa senha é fraca demais (curta ou muito comum). Use pelo menos 8 caracteres, misturando letras e números.';
         if (/rate limit|only request this after|too many requests/i.test(bruto)) return 'Muitas tentativas em pouco tempo. Espere 1 minuto e tente de novo.';
         if (/unable to validate email address|email address ".*" is invalid/i.test(bruto)) return 'E-mail inválido. Confira se digitou certinho.';
         return bruto;
