@@ -237,6 +237,24 @@ select[multiple] { height: auto; }
         .pend-confirmar { width: auto; flex: none; margin: 0; padding: 10px 12px; font-size: 0.85rem; background: var(--success); color: var(--on-success); }
         .pend-vazio { text-align: center; padding: 18px 8px; color: var(--muted-strong); font-size: 0.92rem; line-height: 1.4; }
 
+        /* ---- v1.10.2: Admin > Contas ---- */
+        .conta-item { display: flex; flex-direction: column; gap: 4px; padding: 12px 2px; border-bottom: 1px solid var(--divider-soft); }
+        .conta-item:last-child { border-bottom: none; }
+        .conta-item.ocupado { opacity: 0.6; pointer-events: none; }
+        .conta-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+        .conta-selo { font-size: 0.72rem; padding: 2px 8px; border-radius: 10px; background: var(--panel); color: var(--text); border: 1px solid var(--divider); white-space: nowrap; }
+        .conta-selo-bloq { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-text); }
+        .conta-selo-ok { background: var(--valor-bg); color: var(--valor-text); border-color: transparent; }
+        .conta-acoes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .conta-btn { width: auto; flex: 1 1 auto; margin: 0; padding: 10px 10px; font-size: 0.82rem; }
+        .conta-btn-perigo, .conta-btn-perigo:hover { background: var(--danger); color: #fff; }
+        .conta-btn:disabled { opacity: 0.5; }
+        .conta-apagar { margin-top: 8px; padding: 10px; border-radius: 8px; background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-text); font-size: 0.85rem; line-height: 1.4; }
+        .conta-apagar input { margin-top: 8px; }
+        .hist-item { padding: 8px 2px; border-bottom: 1px solid var(--divider-soft); font-size: 0.85rem; line-height: 1.4; overflow-wrap: anywhere; }
+        .hist-item:last-child { border-bottom: none; }
+        #contasHistDetalhes summary { cursor: pointer; font-weight: bold; padding: 4px 0; }
+
         /* caixa de mensagens do admin */
         .msg-conversa { cursor: pointer; padding: 12px 14px; border: 2px solid transparent; }
         .msg-conversa.nova { border-color: var(--accent); }
@@ -857,6 +875,7 @@ select[multiple] { height: auto; }
                 <button type="button" id="adminAbaUso" class="admin-aba ativa" aria-pressed="true" onclick="adminAbrirAba('uso')"><span class="admin-aba-icone" aria-hidden="true">📊</span><span>Uso</span></button>
                 <button type="button" id="adminAbaPend" class="admin-aba" aria-pressed="false" onclick="adminAbrirAba('pend')"><span class="admin-aba-icone" aria-hidden="true">✉️</span><span>Pendentes</span><span class="selo" id="seloPend" hidden></span></button>
                 <button type="button" id="adminAbaMsg" class="admin-aba" aria-pressed="false" onclick="adminAbrirAba('msg')"><span class="admin-aba-icone" aria-hidden="true">💬</span><span>Mensagens</span><span class="selo" id="seloMsg" hidden></span></button>
+                <button type="button" id="adminAbaContas" class="admin-aba" aria-pressed="false" onclick="adminAbrirAba('contas')"><span class="admin-aba-icone" aria-hidden="true">👥</span><span>Contas</span></button>
             </div>
 
             <div id="adminSecUso" class="admin-conteudo ativa">
@@ -878,6 +897,28 @@ select[multiple] { height: auto; }
                     <details class="admin-legenda"><summary>Como cada status é calculado</summary><p id="adminLegendaTexto"></p></details>
                 </div>
                 <div id="adminLista"></div>
+            </div>
+
+            <div id="adminSecContas" class="admin-conteudo">
+                <div class="card">
+                    <h3>👥 Todas as contas</h3><br>
+                    <p class="aviso-salvamento" style="margin:0 0 12px;"><strong>Bloquear</strong> tira a pessoa do app na hora, em todos os aparelhos, e guarda os lançamentos dela. <strong>Apagar</strong> remove a conta e todos os dados, sem volta.</p>
+                    <div class="form-group"><label for="contasBusca">Buscar por e-mail:</label><input type="search" id="contasBusca" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="digite parte do e-mail" oninput="contasMudouBusca(this.value)"></div>
+                    <div class="form-group"><label for="contasFiltro">Mostrar:</label>
+                        <select id="contasFiltro" onchange="contasMudouFiltro(this.value)">
+                            <option value="todas">Todas</option>
+                            <option value="ativa">Ativas</option>
+                            <option value="bloqueada">Bloqueadas</option>
+                            <option value="pendente">Não confirmadas</option>
+                            <option value="admin">Administradores</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn-secundario" onclick="adminCarregarContas(true)">🔄 Atualizar lista</button>
+                    <p id="contasContador" class="aviso-salvamento"></p>
+                    <p id="contasStatus" class="fb" aria-live="polite"></p>
+                </div>
+                <div class="card"><div id="contasLista"></div></div>
+                <div class="card"><details id="contasHistDetalhes" ontoggle="contasHistToggle(this.open)"><summary>📜 Histórico de ações do admin</summary><div id="contasHistorico"></div></details></div>
             </div>
 
             <div id="adminSecPend" class="admin-conteudo">
@@ -2675,7 +2716,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.10.1';
+    const APP_VERSAO_ATUAL = '1.10.2';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
@@ -3033,6 +3074,7 @@ select[multiple] { height: auto; }
         const bruto = (e && e.message) ? String(e.message) : String(e || '');
         if (/failed to fetch|networkerror|load failed|network request failed/i.test(bruto)) return 'Sem conexão com a internet agora. Tente de novo quando tiver sinal.';
         if (/invalid login credentials/i.test(bruto)) return 'E-mail ou senha incorretos.';
+        if (/banned/i.test(bruto)) return 'Não foi possível entrar. Fale com o responsável.';
         if (/email not confirmed/i.test(bruto)) return 'Você ainda não confirmou seu e-mail. Abra a mensagem de confirmação que enviamos (olhe também o spam), toque no link e depois volte aqui e toque em Entrar.';
         if (/user already registered|already been registered/i.test(bruto)) return 'Este e-mail já tem conta. Toque em Entrar (ou em "Esqueci minha senha", se não lembrar a senha).';
         if (/password should be at least|weak.password|pwned|leaked/i.test(bruto)) return 'Essa senha é fraca demais (curta ou muito comum). Use pelo menos 8 caracteres, misturando letras e números.';
@@ -3325,8 +3367,234 @@ select[multiple] { height: auto; }
         }
     }
 
-    // ---------- painel Admin: abas (Uso | Pendentes | Mensagens) ----------
-    var ADMIN_ABAS = { uso: ['adminAbaUso', 'adminSecUso'], pend: ['adminAbaPend', 'adminSecPend'], msg: ['adminAbaMsg', 'adminSecMsg'] };
+    // ==================================================================
+    // v1.10.2 — ADMIN > CONTAS: todas as contas, bloquear/desbloquear, apagar,
+    // reenviar confirmação, redefinir senha e histórico das ações do admin.
+    // Quem decide se pode é o servidor (admin_* no Supabase); aqui é só a tela.
+    // ==================================================================
+    var contasDados = null;        // lista vinda do servidor (fica só na memória)
+    var contasCarregando = false;
+    var contasErro = '';
+    var contasOcupado = {};        // user_id -> true enquanto uma ação está em andamento
+    var contasApagando = null;     // user_id com a confirmação de "apagar" aberta
+    var contasFiltro = 'todas';
+    var contasBusca = '';
+    var contasHistAberto = false;
+    var CONTA_SELO = {
+        admin:     ['👑 Admin', 'conta-selo-admin'],
+        bloqueada: ['🚫 Bloqueada', 'conta-selo-bloq'],
+        pendente:  ['✉️ Não confirmada', 'conta-selo-pend'],
+        ativa:     ['✅ Ativa', 'conta-selo-ok']
+    };
+    var HIST_ROTULO = {
+        bloquear: '🚫 Bloqueou', desbloquear: '✅ Desbloqueou', apagar: '🗑️ Apagou',
+        reenviar_confirmacao: '✉️ Reenviou confirmação', redefinir_senha: '🔑 Enviou redefinição de senha',
+        confirmar_email: '☑️ Confirmou e-mail manualmente'
+    };
+
+    function contasStatus(c) {
+        if (c.e_admin) return 'admin';
+        if (c.bloqueado) return 'bloqueada';
+        if (!c.confirmado_em) return 'pendente';
+        return 'ativa';
+    }
+
+    function contasAchar(uid) {
+        return (contasDados || []).find(c => c.user_id === uid) || null;
+    }
+
+    async function adminCarregarContas(manual) {
+        if (contasCarregando) return;
+        contasCarregando = true;
+        contasErro = '';
+        const st = document.getElementById('contasStatus');
+        if (st && manual) { st.className = 'fb'; st.textContent = ''; }
+        renderizarContas();
+        try {
+            const r = await chamarRpcAdmin('admin_listar_contas');
+            contasDados = Array.isArray(r) ? r : [];
+            if (st && manual) { st.className = 'fb fb-ok'; st.textContent = 'Lista atualizada.'; }
+        } catch (e) {
+            contasErro = mensagemErroAdmin(e, 'carregar as contas');
+        } finally {
+            contasCarregando = false;
+            renderizarContas();
+        }
+    }
+
+    function contasMudouBusca(v) { contasBusca = String(v || ''); renderizarContas(); }
+    function contasMudouFiltro(v) { contasFiltro = CONTA_SELO[v] ? v : 'todas'; renderizarContas(); }
+
+    function renderizarContas() {
+        const lista = document.getElementById('contasLista');
+        if (!lista) return;
+        const cont = document.getElementById('contasContador');
+        if (contasErro) {
+            lista.innerHTML = '<div class="pend-vazio">' + htmlSeguro(contasErro) + '</div>';
+            if (cont) cont.textContent = '';
+            return;
+        }
+        if (contasDados === null) {
+            lista.innerHTML = contasCarregando ? '<div class="pend-vazio">Carregando...</div>' : '';
+            if (cont) cont.textContent = '';
+            return;
+        }
+        const busca = contasBusca.trim().toLowerCase();
+        const vis = contasDados.filter(c => (contasFiltro === 'todas' || contasStatus(c) === contasFiltro) &&
+                                            (!busca || String(c.email || '').toLowerCase().indexOf(busca) >= 0));
+        if (cont) cont.textContent = vis.length + ' de ' + contasDados.length + ' conta(s)';
+        lista.innerHTML = vis.length ? vis.map(contaItemHtml).join('') : '<div class="pend-vazio">Nenhuma conta encontrada.</div>';
+    }
+
+    function contaItemHtml(c) {
+        const st = contasStatus(c);
+        const selo = CONTA_SELO[st];
+        const email = htmlSeguro(c.email || '(sem e-mail)');
+        const google = !!c.provedor && c.provedor !== 'email';
+        const det = 'Cadastro ' + formatarDataHora(c.cadastrado_em) +
+                    ' · último login ' + (c.ultimo_login ? tempoRelativo(c.ultimo_login) : 'nunca') +
+                    ' · ' + (Number(c.total_lancamentos) || 0) + ' lançamento(s)';
+        let h = '<div class="conta-item' + (contasOcupado[c.user_id] ? ' ocupado' : '') + '" data-uid="' + htmlSeguro(c.user_id) + '">' +
+                '<div class="conta-topo"><span class="pend-email">' + email + '</span>' +
+                '<span class="conta-selo ' + selo[1] + '">' + selo[0] + '</span>' +
+                (google ? '<span class="conta-selo">Google</span>' : '') + '</div>' +
+                '<div class="pend-data">' + htmlSeguro(det) + '</div>';
+        if (st === 'admin') return h + '<div class="pend-data">Conta de administrador: não dá para bloquear nem apagar por aqui.</div></div>';
+        h += '<div class="conta-acoes">' +
+             (st === 'bloqueada'
+                ? '<button type="button" class="conta-btn" data-acao="desbloquear">✅ Desbloquear</button>'
+                : '<button type="button" class="conta-btn" data-acao="bloquear">🚫 Bloquear</button>') +
+             (st === 'pendente' && !google ? '<button type="button" class="conta-btn" data-acao="reenviar">✉️ Reenviar confirmação</button>' : '') +
+             (!google ? '<button type="button" class="conta-btn" data-acao="senha">🔑 Redefinir senha</button>' : '') +
+             '<button type="button" class="conta-btn conta-btn-perigo" data-acao="apagar">🗑️ Apagar</button></div>';
+        if (contasApagando === c.user_id) {
+            h += '<div class="conta-apagar"><p>Isto apaga a conta e <strong>todos os lançamentos, serviços e mensagens</strong> desta pessoa. ' +
+                 'Não tem como desfazer. Para confirmar, digite o e-mail da conta:</p>' +
+                 '<input type="email" class="conta-apagar-email" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Digite o e-mail da conta para confirmar">' +
+                 '<div class="conta-acoes"><button type="button" class="conta-btn btn-secundario" data-acao="cancelar-apagar">Cancelar</button>' +
+                 '<button type="button" class="conta-btn conta-btn-perigo" data-acao="apagar-de-vez" disabled>Apagar de vez</button></div></div>';
+        }
+        return h + '</div>';
+    }
+
+    function contasEmailConfere(c, digitado) {
+        return String(digitado || '').trim().toLowerCase() === String(c.email || '').trim().toLowerCase() && !!c.email;
+    }
+
+    document.addEventListener('click', ev => {
+        const b = ev.target && ev.target.closest ? ev.target.closest('#contasLista .conta-btn') : null;
+        if (!b || b.disabled) return;
+        const item = b.closest('.conta-item');
+        const c = item ? contasAchar(item.getAttribute('data-uid')) : null;
+        if (!c || contasOcupado[c.user_id]) return;
+        const a = b.getAttribute('data-acao');
+        if (a === 'bloquear') {
+            confirmarAcao('Bloquear ' + c.email + '? A pessoa sai do app na hora, em todos os aparelhos, e não consegue mais entrar até você desbloquear. Os lançamentos dela continuam guardados.',
+                ok => { if (ok) contasExecutar(c, 'bloquear'); });
+        } else if (a === 'desbloquear') {
+            confirmarAcao('Desbloquear ' + c.email + '? A pessoa volta a conseguir entrar.', ok => { if (ok) contasExecutar(c, 'desbloquear'); });
+        } else if (a === 'reenviar') {
+            confirmarAcao('Reenviar o e-mail de confirmação para ' + c.email + '?', ok => { if (ok) contasExecutar(c, 'reenviar'); });
+        } else if (a === 'senha') {
+            confirmarAcao('Enviar para ' + c.email + ' um e-mail com o link para criar uma senha nova?', ok => { if (ok) contasExecutar(c, 'senha'); });
+        } else if (a === 'apagar') {
+            contasApagando = c.user_id;
+            renderizarContas();
+            const novo = document.querySelector('#contasLista .conta-item[data-uid="' + CSS.escape(c.user_id) + '"] .conta-apagar-email');
+            if (novo) novo.focus();
+        } else if (a === 'cancelar-apagar') {
+            contasApagando = null;
+            renderizarContas();
+        } else if (a === 'apagar-de-vez') {
+            const inp = item.querySelector('.conta-apagar-email');
+            const dig = inp ? inp.value : '';
+            if (contasEmailConfere(c, dig)) contasExecutar(c, 'apagar', dig);
+        }
+    });
+
+    document.addEventListener('input', ev => {
+        const t = ev.target;
+        if (!t || !t.classList || !t.classList.contains('conta-apagar-email')) return;
+        const item = t.closest('.conta-item');
+        const c = item ? contasAchar(item.getAttribute('data-uid')) : null;
+        const btn = item ? item.querySelector('[data-acao="apagar-de-vez"]') : null;
+        if (btn && c) btn.disabled = !contasEmailConfere(c, t.value);
+    });
+
+    async function reenviarConfirmacao(email) {
+        const r = await fetch(`${SUPABASE_URL}/auth/v1/resend`, {
+            method: 'POST',
+            headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'signup', email })
+        });
+        if (!r.ok) {
+            const erro = await r.json().catch(() => ({}));
+            throw new Error(erro.msg || erro.error_description || 'Não foi possível reenviar o e-mail de confirmação.');
+        }
+    }
+
+    async function contasExecutar(c, acao, emailDigitado) {
+        const st = document.getElementById('contasStatus');
+        let msg = '';
+        contasOcupado[c.user_id] = true;
+        renderizarContas();
+        try {
+            if (acao === 'bloquear' || acao === 'desbloquear') {
+                await chamarRpcAdmin('admin_bloquear_conta', { p_user: c.user_id, p_bloquear: acao === 'bloquear' });
+                c.bloqueado = acao === 'bloquear';
+                msg = acao === 'bloquear' ? c.email + ' foi bloqueada e saiu do app em todos os aparelhos.' : c.email + ' foi desbloqueada e já pode entrar de novo.';
+            } else if (acao === 'apagar') {
+                await chamarRpcAdmin('admin_apagar_conta', { p_user: c.user_id, p_email_confirmacao: emailDigitado });
+                contasDados = (contasDados || []).filter(x => x.user_id !== c.user_id);
+                contasApagando = null;
+                adminCarregadoEm = 0;   // a aba Uso recarrega na próxima vez
+                msg = 'A conta ' + c.email + ' e todos os dados dela foram apagados.';
+            } else if (acao === 'reenviar') {
+                await reenviarConfirmacao(c.email);
+                try { await chamarRpcAdmin('admin_registrar_acao', { p_user: c.user_id, p_acao: 'reenviar_confirmacao' }); } catch (e) {}
+                msg = 'E-mail de confirmação reenviado para ' + c.email + '. Peça para olhar também o spam.';
+            } else if (acao === 'senha') {
+                await solicitarResetSenha(c.email);
+                try { await chamarRpcAdmin('admin_registrar_acao', { p_user: c.user_id, p_acao: 'redefinir_senha' }); } catch (e) {}
+                msg = 'Enviado para ' + c.email + ' o link para criar uma senha nova. Peça para olhar também o spam.';
+            }
+            if (st) { st.className = 'fb fb-ok'; st.textContent = msg; }
+            mostrarMensagem(msg);
+            if (contasHistAberto) adminCarregarHistorico();
+        } catch (e) {
+            const t = (acao === 'reenviar' || acao === 'senha') ? traduzirErroAuth(e) : mensagemErroAdmin(e, 'concluir');
+            if (st) { st.className = 'fb fb-erro'; st.textContent = t; }
+            mostrarMensagem(t);
+        } finally {
+            delete contasOcupado[c.user_id];
+            renderizarContas();
+        }
+    }
+
+    function contasHistToggle(aberto) {
+        contasHistAberto = !!aberto;
+        if (contasHistAberto) adminCarregarHistorico();
+    }
+
+    async function adminCarregarHistorico() {
+        const el = document.getElementById('contasHistorico');
+        if (!el) return;
+        el.innerHTML = '<div class="pend-vazio">Carregando...</div>';
+        try {
+            const r = await chamarRpcAdmin('admin_listar_acoes');
+            const lista = Array.isArray(r) ? r : [];
+            el.innerHTML = lista.length ? lista.map(x =>
+                '<div class="hist-item"><span class="pend-data">' + formatarDataHora(x.criado_em) + '</span><br>' +
+                '<strong>' + htmlSeguro(HIST_ROTULO[x.acao] || x.acao) + '</strong> · ' + htmlSeguro(x.alvo_email || '') +
+                (x.detalhe ? ' <span class="pend-data">(' + htmlSeguro(x.detalhe) + ')</span>' : '') + '</div>').join('')
+                : '<div class="pend-vazio">Nenhuma ação registrada ainda.</div>';
+        } catch (e) {
+            el.innerHTML = '<div class="pend-vazio">' + htmlSeguro(mensagemErroAdmin(e, 'carregar o histórico')) + '</div>';
+        }
+    }
+
+    // ---------- painel Admin: abas (Uso | Pendentes | Mensagens | Contas) ----------
+    var ADMIN_ABAS = { uso: ['adminAbaUso', 'adminSecUso'], pend: ['adminAbaPend', 'adminSecPend'], msg: ['adminAbaMsg', 'adminSecMsg'], contas: ['adminAbaContas', 'adminSecContas'] };
 
     function adminAoAbrir() {
         adminAbrirAba(adminAba);
@@ -3346,6 +3614,7 @@ select[multiple] { height: auto; }
         });
         if (adminAba === 'uso') carregarPainelAdminSePreciso();
         else if (adminAba === 'pend') adminCarregarPendentes(false);
+        else if (adminAba === 'contas') { if (contasDados === null || contasErro) adminCarregarContas(false); else renderizarContas(); }
         else adminCarregarConversas(false);
     }
 
