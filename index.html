@@ -155,6 +155,7 @@ select[multiple] { height: auto; }
         #areaLoginObrigatorio label { font-weight: bold; font-size: 1.02rem; }
         #areaLoginObrigatorio input { padding: 13px 14px; font-size: 1rem; border-radius: 8px; }
         #areaLoginObrigatorio .btn-linha button { padding: 13px 8px; font-size: 1.02rem; border-radius: 8px; }
+        .gate-digital { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin: 0 0 10px; padding: 14px 8px; font-size: 1.05rem; border-radius: 8px; background: var(--success); color: var(--on-success); }
         .gate-esqueci { display: inline-block; padding: 8px 6px; color: var(--text); font-size: 0.95rem; text-decoration: underline; }
         #telaLoginObrigatorio .marca-dev-gate { font-size: 0.82rem; color: var(--muted-strong); opacity: 1; margin-top: 26px; }
         .marca-dev-gate { text-align: center; font-size: 0.7rem; letter-spacing: 0.03em; color: var(--muted); opacity: 0.8; margin: 22px 0 6px; user-select: none; -webkit-user-select: none; }
@@ -2087,7 +2088,7 @@ select[multiple] { height: auto; }
         try { return JSON.parse(localStorage.getItem('sb_sessao')) || null; }
         catch (e) { return null; }
     }
-    function salvarSessao(sessao) { localStorage.setItem('sb_sessao', JSON.stringify(sessao)); }
+    function salvarSessao(sessao) { localStorage.setItem('sb_sessao', JSON.stringify(sessao)); try { digitalEspelharSessao(sessao); } catch (e) {} }
     function limparSessao() { localStorage.removeItem('sb_sessao'); try { ocultarAdminAoSair(); } catch (e) {} }
     function estaLogado() { return !!getSessao(); }
 
@@ -2495,14 +2496,12 @@ select[multiple] { height: auto; }
     function renderizarLoginObrigatorio() {
         if (!sbConfigurado()) { esconderTelaLoginObrigatorio(); return; } // sem nuvem configurada, não trava o app
         const area = document.getElementById('areaLoginObrigatorio');
-        // Login por digital temporariamente fora da tela de bloqueio —
-        // volta depois que o fluxo de e-mail/senha estiver 100% confirmado.
         const temGoogleDisponivel = typeof AndroidGoogleAuth !== 'undefined' && typeof AndroidGoogleAuth.entrarComGoogle === 'function';
+        const temDigital = digitalPronta();
         area.innerHTML = `
-            ${temGoogleDisponivel ? `
-                <button type="button" class="btn-secundario" onclick="handleEntrarComGoogleGate()">🔵 Entrar com Google</button>
-                <p style="text-align:center; font-size:0.8rem; color:var(--muted-soft); margin:10px 0;">ou entre com e-mail e senha:</p>
-            ` : ''}
+            ${temDigital ? `<button type="button" class="gate-digital" onclick="handleEntrarComDigitalGate()">👆 Entrar com a digital</button>` : ''}
+            ${temGoogleDisponivel ? `<button type="button" class="btn-secundario" onclick="handleEntrarComGoogleGate()">🔵 Entrar com Google</button>` : ''}
+            ${temDigital || temGoogleDisponivel ? `<p style="text-align:center; font-size:0.8rem; color:var(--muted-soft); margin:10px 0;">ou entre com e-mail e senha:</p>` : ''}
             <div class="form-group"><label for="gateEmail">E-mail:</label><input type="email" id="gateEmail" placeholder="Digite seu e-mail" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
             <div class="form-group"><label for="gateSenha">Senha:</label><input type="password" id="gateSenha" placeholder="Digite sua senha" autocomplete="current-password"></div>
             <div class="btn-linha">
@@ -2510,6 +2509,13 @@ select[multiple] { height: auto; }
                 <button type="button" class="btn-secundario" onclick="handleCadastrarGate()">Criar Conta</button>
             </div>
             <p style="text-align:center; margin-top:8px;"><a href="#" class="gate-esqueci" onclick="handleEsqueciSenhaGate(); return false;">Esqueci minha senha</a></p>`;
+        if (temDigital && !digitalTentadaNestaAbertura) {
+            digitalTentadaNestaAbertura = true;
+            setTimeout(() => {
+                const t = document.getElementById('telaLoginObrigatorio');
+                if (t && t.style.display !== 'none') handleEntrarComDigitalGate();
+            }, 350);
+        }
     }
 
     // Decodifica o "payload" (parte do meio) de um JWT, sem verificar
@@ -2555,6 +2561,7 @@ select[multiple] { height: auto; }
             esconderTelaLoginObrigatorio();
             atualizarTelaConta();
             tentarSincronizar();
+            digitalOferecerDepoisDoLogin();
         } catch (e) { mostrarMensagem(traduzirErroAuth(e)); }
     }
 
@@ -2579,22 +2586,109 @@ select[multiple] { height: auto; }
         } catch (e) { mostrarMensagem(traduzirErroAuth(e)); }
     }
 
+    // ==================================================================
+    // v1.10.4 — ENTRAR COM A DIGITAL (só no app Android que tem a ponte AndroidBiometric)
+    // A cópia da sessão guardada no cofre do Android acompanha toda renovação do login
+    // (senão o código de renovação dela vence e a digital para de funcionar).
+    // Ao entrar pela digital, o login é conferido no servidor antes de liberar:
+    // conta bloqueada, apagada ou que saiu da conta não entra.
+    // ==================================================================
+    var digitalTentadaNestaAbertura = false;
+
+    function digitalPronta() {
+        try { return biometriaDisponivelNoApp() && temLoginBiometricoSalvo(); } catch (e) { return false; }
+    }
+
+    function digitalEspelharSessao(sessao) {
+        try {
+            if (sessao && typeof AndroidBiometric !== 'undefined' && AndroidBiometric.temSessaoSalva()) {
+                AndroidBiometric.salvarSessaoSegura(JSON.stringify(sessao));
+            }
+        } catch (e) {}
+    }
+
+    function digitalRemover() {
+        try { if (typeof AndroidBiometric !== 'undefined') AndroidBiometric.removerSessaoSegura(); } catch (e) {}
+    }
+
+    // confere a sessão guardada no servidor (renova o login); devolve 'ok', 'offline' ou a mensagem de erro
+    async function digitalConferirSessao(s) {
+        try {
+            const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+                method: 'POST',
+                headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: s.refresh_token })
+            });
+            const dados = await r.json().catch(() => ({}));
+            if (!r.ok || !dados.access_token || !dados.user) return (dados && (dados.msg || dados.error_description)) || 'sessão recusada';
+            salvarSessao({
+                access_token: dados.access_token, refresh_token: dados.refresh_token,
+                user_id: dados.user.id, email: dados.user.email,
+                expira_em: Date.now() + (dados.expires_in * 1000)
+            });
+            return 'ok';
+        } catch (e) {
+            return 'offline';
+        }
+    }
+
     function handleEntrarComDigitalGate() {
-        if (typeof AndroidBiometric === 'undefined') return;
-        window.receberResultadoBiometria = function (sessaoJson) {
-            if (sessaoJson) {
-                try {
-                    salvarSessao(JSON.parse(sessaoJson));
-                    esconderTelaLoginObrigatorio();
-                    atualizarTelaConta();
-                    tentarSincronizar();
-                } catch (e) {
-                    mostrarMensagem('Não foi possível ler a sessão salva. Entre manualmente com e-mail e senha.');
-                }
+        if (!digitalPronta()) return;
+        window.receberResultadoBiometria = async function (sessaoJson) {
+            if (!sessaoJson) return;   // cancelou ou a digital não conferiu: a tela de login continua ali
+            let s = null;
+            try { s = JSON.parse(sessaoJson); } catch (e) {}
+            if (!s || !s.refresh_token) {
+                digitalRemover();
+                mostrarMensagem('Não foi possível usar a digital. Entre com e-mail e senha.');
+                renderizarLoginObrigatorio();
+                return;
+            }
+            const local = getSessao();   // a cópia mais nova vence (as duas deveriam ser iguais)
+            if (local && local.user_id === s.user_id && (local.expira_em || 0) > (s.expira_em || 0)) s = local;
+            const r = await digitalConferirSessao(s);
+            if (r === 'ok' || r === 'offline') {
+                if (r === 'offline') salvarSessao(s);   // sem internet: libera o app (os dados estão no aparelho) e confere depois
+                esconderTelaLoginObrigatorio();
+                atualizarTelaConta();
+                tentarSincronizar();
+            } else {
+                digitalRemover();
+                limparSessao();
+                mostrarMensagem(/banned/i.test(r)
+                    ? 'Não foi possível entrar. Fale com o responsável.'
+                    : 'O acesso pela digital expirou. Entre com e-mail e senha (depois você pode ativar a digital de novo na aba Conta).');
+                renderizarLoginObrigatorio();
             }
         };
         AndroidBiometric.autenticarComDigital();
     }
+
+    // depois de entrar com senha: oferece a digital uma única vez neste aparelho
+    function digitalOferecerDepoisDoLogin() {
+        try {
+            if (!biometriaDisponivelNoApp() || temLoginBiometricoSalvo()) return;
+            if (localStorage.getItem('digital_oferecida') === '1') return;
+            localStorage.setItem('digital_oferecida', '1');
+        } catch (e) { return; }
+        setTimeout(() => {
+            confirmarAcao('Quer entrar com a digital nas próximas vezes, sem digitar a senha?', ok => { if (ok) handleAtivarBiometria(); });
+        }, 400);
+    }
+
+    function digitalHtmlConta() {
+        if (typeof AndroidUpdater === 'undefined') return '';   // fora do app Android não existe digital
+        if (typeof AndroidBiometric === 'undefined') {
+            return '<p class="aviso-salvamento" style="margin-top:12px;">👆 Entrar com a digital: precisa instalar a versão nova do aplicativo neste celular.</p>';
+        }
+        if (!biometriaDisponivelNoApp()) {
+            return '<p class="aviso-salvamento" style="margin-top:12px;">👆 Entrar com a digital: cadastre uma digital nas configurações do celular para usar.</p>';
+        }
+        return temLoginBiometricoSalvo()
+            ? '<button type="button" class="btn-secundario" style="margin-top:12px;" onclick="handleDesativarBiometria()">👆 Desativar entrada com a digital</button>'
+            : '<button type="button" style="margin-top:12px;" onclick="handleAtivarBiometria()">👆 Ativar entrada com a digital</button>';
+    }
+
 
     async function handleEntrarConta() {
         const email = document.getElementById('contaEmail').value.trim();
@@ -2604,6 +2698,7 @@ select[multiple] { height: auto; }
             await entrarConta(email, senha);
             atualizarTelaConta();
             tentarSincronizar();
+            digitalOferecerDepoisDoLogin();
         } catch (e) { mostrarMensagem(traduzirErroAuth(e)); }
     }
 
@@ -2710,6 +2805,7 @@ select[multiple] { height: auto; }
                     <button type="button" onclick="tentarSincronizar()">🔄 Sincronizar Agora</button>
                     <button type="button" class="btn-secundario" onclick="sairConta()">Sair</button>
                 </div>
+                ${digitalHtmlConta()}
                 ${ultimoErroSync ? `<p style="color:var(--danger-text); font-size:0.82rem; margin-top:10px; background:var(--danger-bg); padding:8px; border-radius:5px;">❌ Erro na última sincronização: ${htmlSeguro(ultimoErroSync)}</p>` : ''}`;
         }
     }
@@ -2727,7 +2823,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.10.3';
+    const APP_VERSAO_ATUAL = '1.10.4';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
