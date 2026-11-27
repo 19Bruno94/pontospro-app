@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://qayqqcqawnvsttnztmzs.supabase.co https://19bruno94.github.io; worker-src 'self'; manifest-src 'self' data:; media-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://qayqqcqawnvsttnztmzs.supabase.co https://19bruno94.github.io https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self' data:; media-src 'none'; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'none'; form-action 'self'">
     <meta name="referrer" content="no-referrer">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -86,6 +86,8 @@
 select[multiple] { height: auto; }
 #modalConfirmacao.aberto { display: flex !important; }
 #modalMensagem.aberto { display: flex !important; }
+#modalCaptcha.aberto { display: flex !important; }
+.captcha-caixa { min-height: 66px; margin: 4px 0 12px; display: flex; justify-content: center; }
 
         /* ---- Aparência: temas prontos e seletor de cor ---- */
         .temas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
@@ -2119,11 +2121,116 @@ select[multiple] { height: auto; }
         } catch (e) { return null; }
     }
 
+    // ==================================================================
+    // v1.10.6 — VERIFICAÇÃO DE SEGURANÇA (Cloudflare Turnstile) contra robôs
+    // Vai junto em: entrar com senha, criar conta, esqueci a senha e reenviar confirmação.
+    // Quem decide se é obrigatória é o Supabase (Authentication > Attack Protection).
+    // Enquanto lá estiver desligado, o app manda a verificação mas nada trava se ela falhar.
+    // ==================================================================
+    const TURNSTILE_SITE_KEY = '0x4AAAAAAGU6UKFPhIJEy9IP';
+    var captchaScript = null;          // Promise do carregamento do script da Cloudflare
+    var captchaGateId = null;          // widget da tela de login
+    var captchaGateToken = null;       // token pronto da tela de login (vale uma vez)
+
+    function captchaLigado() {
+        return /^0x[0-9A-Za-z_-]{10,}$/.test(TURNSTILE_SITE_KEY) || /^[123]x0{20}A[AB]$/.test(TURNSTILE_SITE_KEY);
+    }
+
+    function captchaCarregar() {
+        if (!captchaLigado()) return Promise.resolve(false);
+        if (window.turnstile) return Promise.resolve(true);
+        if (captchaScript) return captchaScript;
+        captchaScript = new Promise(resolve => {
+            const s = document.createElement('script');
+            s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+            s.async = true;
+            s.onload = () => resolve(!!window.turnstile);
+            s.onerror = () => { captchaScript = null; resolve(false); };   // sem internet: tenta de novo na próxima
+            document.head.appendChild(s);
+            setTimeout(() => resolve(!!window.turnstile), 15000);
+        });
+        return captchaScript;
+    }
+
+    function captchaOpcoes(extra) {
+        return Object.assign({
+            sitekey: TURNSTILE_SITE_KEY, theme: 'auto', language: 'pt-br', size: 'flexible',
+            appearance: 'always', 'refresh-expired': 'auto'
+        }, extra);
+    }
+
+    // widget fixo na tela de login (chamado sempre que a tela é desenhada)
+    async function captchaMontarGate() {
+        const caixa = document.getElementById('gateCaptcha');
+        if (!caixa || !captchaLigado()) return;
+        const ok = await captchaCarregar();
+        if (!ok || !document.body.contains(caixa)) return;
+        if (captchaGateId !== null) { try { window.turnstile.remove(captchaGateId); } catch (e) {} }
+        captchaGateToken = null;
+        try {
+            captchaGateId = window.turnstile.render(caixa, captchaOpcoes({
+                callback: t => { captchaGateToken = t; },
+                'expired-callback': () => { captchaGateToken = null; },
+                'error-callback': () => { captchaGateToken = null; return true; }
+            }));
+        } catch (e) { captchaGateId = null; }
+    }
+
+    // pede um token novo numa janelinha (usado fora da tela de login: aba Conta, painel Admin)
+    function captchaPedirNaJanela() {
+        return new Promise(resolve => {
+            const modal = document.getElementById('modalCaptcha');
+            const caixa = document.getElementById('modalCaptchaCaixa');
+            let id = null, fim = false;
+            const terminar = t => {
+                if (fim) return; fim = true;
+                modal.classList.remove('aberto');
+                try { if (id !== null) window.turnstile.remove(id); } catch (e) {}
+                caixa.innerHTML = '';
+                resolve(t || null);
+            };
+            window.captchaCancelarJanela = () => terminar(null);
+            caixa.innerHTML = '';
+            modal.classList.add('aberto');
+            try {
+                id = window.turnstile.render(caixa, captchaOpcoes({
+                    callback: t => setTimeout(() => terminar(t), 250),
+                    'error-callback': () => { setTimeout(() => terminar(null), 1200); return true; }
+                }));
+            } catch (e) { terminar(null); }
+            setTimeout(() => terminar(null), 60000);
+        });
+    }
+
+    // devolve o token (ou null) para mandar junto do pedido de login/cadastro/e-mail
+    async function obterTokenCaptcha() {
+        if (!captchaLigado()) return null;
+        const naTela = document.getElementById('gateCaptcha');
+        const telaVisivel = naTela && document.getElementById('telaLoginObrigatorio').style.display !== 'none';
+        if (telaVisivel && captchaGateId !== null && !captchaGateToken) {
+            for (let i = 0; i < 40 && !captchaGateToken; i++) await new Promise(r => setTimeout(r, 250));   // espera o "Sucesso!" (até 10 s)
+        }
+        if (telaVisivel && captchaGateToken) {
+            const t = captchaGateToken;
+            captchaGateToken = null;
+            setTimeout(() => { try { window.turnstile.reset(captchaGateId); } catch (e) {} }, 300);   // cada token vale uma vez
+            return t;
+        }
+        const ok = await captchaCarregar();
+        if (!ok) return null;
+        return captchaPedirNaJanela();
+    }
+
+    async function corpoComCaptcha(corpo) {
+        const t = await obterTokenCaptcha();
+        return t ? Object.assign({}, corpo, { gotrue_meta_security: { captcha_token: t } }) : corpo;
+    }
+
     async function cadastrarConta(email, senha) {
         const r = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
             method: 'POST',
             headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password: senha })
+            body: JSON.stringify(await corpoComCaptcha({ email, password: senha }))
         });
         const dados = await r.json();
         if (!r.ok) throw new Error(dados.msg || dados.error_description || 'Não foi possível criar a conta.');
@@ -2141,7 +2248,7 @@ select[multiple] { height: auto; }
         const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
             method: 'POST',
             headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password: senha })
+            body: JSON.stringify(await corpoComCaptcha({ email, password: senha }))
         });
         const dados = await r.json();
         if (!r.ok) throw new Error(dados.msg || dados.error_description || 'E-mail ou senha incorretos.');
@@ -2165,7 +2272,7 @@ select[multiple] { height: auto; }
         const r = await fetch(`${SUPABASE_URL}/auth/v1/recover?redirect_to=${encodeURIComponent(URL_REDIRECIONAMENTO_SENHA)}`, {
             method: 'POST',
             headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email })
+            body: JSON.stringify(await corpoComCaptcha({ email }))
         });
         if (!r.ok) {
             const erro = await r.json().catch(() => ({}));
@@ -2506,11 +2613,13 @@ select[multiple] { height: auto; }
             ${temDigital || temGoogleDisponivel ? `<p style="text-align:center; font-size:0.8rem; color:var(--muted-soft); margin:10px 0;">ou entre com e-mail e senha:</p>` : ''}
             <div class="form-group"><label for="gateEmail">E-mail:</label><input type="email" id="gateEmail" placeholder="Digite seu e-mail" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
             <div class="form-group"><label for="gateSenha">Senha:</label><input type="password" id="gateSenha" placeholder="Digite sua senha" autocomplete="current-password"></div>
+            ${captchaLigado() ? '<div id="gateCaptcha" class="captcha-caixa" aria-label="Verificação de segurança"></div>' : ''}
             <div class="btn-linha">
                 <button type="button" onclick="handleEntrarGate()">Entrar</button>
                 <button type="button" class="btn-secundario" onclick="handleCadastrarGate()">Criar Conta</button>
             </div>
             <p style="text-align:center; margin-top:8px;"><a href="#" class="gate-esqueci" onclick="handleEsqueciSenhaGate(); return false;">Esqueci minha senha</a></p>`;
+        captchaMontarGate();
         if (temDigital && !digitalTentadaNestaAbertura) {
             digitalTentadaNestaAbertura = true;
             setTimeout(() => {
@@ -2825,7 +2934,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.10.5';
+    const APP_VERSAO_ATUAL = '1.10.6';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
@@ -3184,6 +3293,7 @@ select[multiple] { height: auto; }
         if (/failed to fetch|networkerror|load failed|network request failed/i.test(bruto)) return 'Sem conexão com a internet agora. Tente de novo quando tiver sinal.';
         if (/invalid login credentials/i.test(bruto)) return 'E-mail ou senha incorretos.';
         if (/banned/i.test(bruto)) return 'Não foi possível entrar. Fale com o responsável.';
+        if (/captcha/i.test(bruto)) return 'Não deu para confirmar a verificação de segurança (Cloudflare). Espere aparecer "Sucesso!" na caixa e tente de novo.';
         if (/email not confirmed/i.test(bruto)) return 'Você ainda não confirmou seu e-mail. Abra a mensagem de confirmação que enviamos (olhe também o spam), toque no link e depois volte aqui e toque em Entrar.';
         if (/user already registered|already been registered/i.test(bruto)) return 'Este e-mail já tem conta. Toque em Entrar (ou em "Esqueci minha senha", se não lembrar a senha).';
         if (/password should be at least|weak.password|pwned|leaked/i.test(bruto)) return 'Essa senha é fraca demais (curta ou muito comum). Use pelo menos 8 caracteres, misturando letras e números.';
@@ -3634,7 +3744,7 @@ select[multiple] { height: auto; }
         const r = await fetch(`${SUPABASE_URL}/auth/v1/resend`, {
             method: 'POST',
             headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'signup', email })
+            body: JSON.stringify(await corpoComCaptcha({ type: 'signup', email }))
         });
         if (!r.ok) {
             const erro = await r.json().catch(() => ({}));
@@ -4469,6 +4579,14 @@ select[multiple] { height: auto; }
             <button type="button" onclick="modalConfirmacaoResponder(true)">Confirmar</button>
             <button type="button" class="btn-secundario" onclick="modalConfirmacaoResponder(false)">Cancelar</button>
         </div>
+    </div>
+</div>
+
+<div id="modalCaptcha" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10003; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:var(--card); border-radius:10px; padding:20px; max-width:340px; width:100%; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+        <p style="margin:0 0 12px; font-size:0.9rem; line-height:1.4;">🛡️ Verificação de segurança (Cloudflare). Aguarde o "Sucesso!" ou toque na caixa.</p>
+        <div id="modalCaptchaCaixa" class="captcha-caixa"></div>
+        <button type="button" class="btn-secundario" onclick="window.captchaCancelarJanela && window.captchaCancelarJanela()">Cancelar</button>
     </div>
 </div>
 
