@@ -87,6 +87,22 @@ select[multiple] { height: auto; }
 #modalConfirmacao.aberto { display: flex !important; }
 #modalMensagem.aberto { display: flex !important; }
 #modalCaptcha.aberto { display: flex !important; }
+#modalAviso.aberto { display: flex !important; }
+.aviso-janela { background: var(--card); color: var(--text); border-radius: 12px; padding: 20px; max-width: 420px; width: 100%; max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 6px 24px rgba(0,0,0,0.35); border-top: 5px solid var(--primary, #2563eb); }
+.aviso-janela h3 { margin: 0 0 4px; font-size: 1.1rem; line-height: 1.3; overflow-wrap: anywhere; }
+.aviso-selo { font-size: 0.78rem; font-weight: 700; letter-spacing: .02em; color: var(--muted-strong); margin: 0 0 8px; }
+.aviso-corpo { white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto; font-size: 0.98rem; line-height: 1.5; margin: 6px 0 10px; flex: 1 1 auto; }
+.aviso-rodape { font-size: 0.78rem; color: var(--muted-strong); margin: 0 0 12px; }
+.aviso-item { padding: 12px 2px; border-bottom: 1px solid var(--divider-soft); }
+.aviso-item:last-child { border-bottom: 0; }
+.aviso-titulo { overflow-wrap: anywhere; }
+.aviso-texto-curto { font-size: 0.85rem; margin: 6px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.aviso-barra { height: 8px; border-radius: 4px; background: var(--panel); border: 1px solid var(--divider); overflow: hidden; margin: 6px 0 4px; }
+.aviso-barra span { display: block; height: 100%; background: var(--valor-text, #16a34a); }
+.aviso-conta { font-size: 0.85rem; font-weight: 600; }
+.aviso-grupo { font-weight: 700; font-size: 0.88rem; margin: 12px 0 2px; }
+.aviso-contador-texto { font-size: 0.78rem; color: var(--muted-strong); text-align: right; margin-top: 2px; }
+@media (max-width: 340px) { .admin-abas { gap: 2px; } .admin-aba { letter-spacing: -0.03em; font-size: 0.58rem; } }
 .captcha-caixa { min-height: 66px; margin: 4px 0 12px; display: flex; justify-content: center; }
 
         /* ---- Aparência: temas prontos e seletor de cor ---- */
@@ -222,8 +238,8 @@ select[multiple] { height: auto; }
 
         /* ---- v1.10.0: painel Admin com abas (Uso | Pendentes | Mensagens) ---- */
         #painelAdmin { display: none; }
-        .admin-abas { display: flex; gap: 6px; margin-bottom: 12px; }
-        .admin-aba { flex: 1 1 0; min-width: 0; margin: 0; padding: 8px 2px 9px; position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px; background: var(--panel); color: var(--text); border: 2px solid var(--divider); border-radius: 8px; font-size: 0.82rem; line-height: 1.15; }
+        .admin-abas { display: flex; gap: 4px; margin-bottom: 12px; }
+        .admin-aba { flex: 1 1 0; min-width: 0; margin: 0; padding: 8px 2px 9px; position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px; background: var(--panel); color: var(--text); border: 2px solid var(--divider); border-radius: 8px; font-size: clamp(0.6rem, 2.75vw, 0.78rem); line-height: 1.15; padding-left: 1px; padding-right: 1px; }
         .admin-aba:hover { background: var(--panel); }
         .admin-aba.ativa, .admin-aba.ativa:hover { background: var(--card); color: var(--accent); border-color: var(--accent); }
         .admin-aba-icone { font-size: 1.2rem; line-height: 1.1; }
@@ -892,6 +908,7 @@ select[multiple] { height: auto; }
                 <button type="button" id="adminAbaPend" class="admin-aba" aria-pressed="false" onclick="adminAbrirAba('pend')"><span class="admin-aba-icone" aria-hidden="true">✉️</span><span>Pendentes</span><span class="selo" id="seloPend" hidden></span></button>
                 <button type="button" id="adminAbaMsg" class="admin-aba" aria-pressed="false" onclick="adminAbrirAba('msg')"><span class="admin-aba-icone" aria-hidden="true">💬</span><span>Mensagens</span><span class="selo" id="seloMsg" hidden></span></button>
                 <button type="button" id="adminAbaContas" class="admin-aba" aria-pressed="false" onclick="adminAbrirAba('contas')"><span class="admin-aba-icone" aria-hidden="true">👥</span><span>Contas</span></button>
+                <button type="button" id="adminAbaAvisos" class="admin-aba" aria-pressed="false" onclick="adminAbrirAba('avisos')"><span class="admin-aba-icone" aria-hidden="true">📢</span><span>Avisos</span></button>
             </div>
 
             <div id="adminSecUso" class="admin-conteudo ativa">
@@ -935,6 +952,27 @@ select[multiple] { height: auto; }
                 </div>
                 <div class="card"><div id="contasLista"></div></div>
                 <div class="card"><details id="contasHistDetalhes" ontoggle="contasHistToggle(this.open)"><summary>📜 Histórico de ações do admin</summary><div id="contasHistorico"></div></details></div>
+            </div>
+
+            <div id="adminSecAvisos" class="admin-conteudo">
+                <div class="card">
+                    <h3>📢 Aviso para todos</h3><br>
+                    <p class="aviso-salvamento" style="margin:0 0 12px;">O aviso aparece para cada técnico logo depois de entrar no app, até ele tocar em <strong>Entendi</strong>. Aqui você vê quem já confirmou.</p>
+                    <div class="form-group"><label for="avisoTitulo">Título:</label><input type="text" id="avisoTitulo" maxlength="120" autocomplete="off" placeholder="Ex.: Manutenção no sábado"></div>
+                    <div class="form-group"><label for="avisoTexto">Recado:</label><textarea id="avisoTexto" class="chat-texto" rows="5" maxlength="2000" style="min-height:120px;" oninput="avisosContarTexto()" placeholder="Ex.: No sábado, 05/12, das 8h às 10h o app pode ficar fora do ar. A partir de 10/12 será preciso atualizar para a nova versão."></textarea><div id="avisoTextoContador" class="aviso-contador-texto">0/2000</div></div>
+                    <div class="form-group"><label for="avisoAte">Mostrar até (opcional):</label><input type="date" id="avisoAte"></div>
+                    <p class="aviso-salvamento" style="margin:-4px 0 12px;">Sem data, o aviso fica valendo até você encerrar. Quem entrar depois da data não vê mais.</p>
+                    <div class="btn-linha">
+                        <button type="button" class="btn-secundario" onclick="avisosPrevia()">👁️ Ver como fica</button>
+                        <button type="button" onclick="avisosPublicar()">📢 Publicar aviso</button>
+                    </div>
+                    <p id="avisosStatus" class="fb" aria-live="polite"></p>
+                </div>
+                <div class="card">
+                    <h3>Avisos publicados</h3><br>
+                    <button type="button" class="btn-secundario" onclick="adminCarregarAvisos(true)">🔄 Atualizar</button>
+                    <div id="avisosLista"></div>
+                </div>
             </div>
 
             <div id="adminSecPend" class="admin-conteudo">
@@ -2226,6 +2264,227 @@ select[multiple] { height: auto; }
         return t ? Object.assign({}, corpo, { gotrue_meta_security: { captcha_token: t } }) : corpo;
     }
 
+    // ==================================================================
+    // v1.10.7 — AVISOS PARA TODOS
+    // Técnico: logo depois de entrar, aparecem os avisos valendo que ele ainda não confirmou,
+    // um por vez, com o botão "Entendi" (é isso que conta como "viu" para o admin).
+    // Admin: aba Avisos para escrever, publicar, ver quem confirmou e encerrar.
+    // ==================================================================
+    var avisosFila = [];
+    var avisosChecadoEm = 0;
+    var avisosChecando = false;
+    var avisosAdminDados = null;
+    var avisosAberto = null;     // id do aviso com a lista de "quem viu" aberta
+
+    function avisosPendentesLocais() {
+        try { return JSON.parse(localStorage.getItem('avisos_confirmar_depois') || '[]').filter(n => Number.isSafeInteger(n)); } catch (e) { return []; }
+    }
+    function avisosGuardarPendentes(lista) {
+        try { localStorage.setItem('avisos_confirmar_depois', JSON.stringify(lista.slice(-50))); } catch (e) {}
+    }
+
+    // manda as confirmações que ficaram presas (sem internet na hora do "Entendi")
+    async function avisosEnviarConfirmacoesGuardadas() {
+        const lista = avisosPendentesLocais();
+        if (!lista.length) return;
+        const sobra = [];
+        for (const id of lista) {
+            try { await chamarRpcAdmin('marcar_aviso_lido', { p_aviso: id }); } catch (e) { sobra.push(id); }
+        }
+        avisosGuardarPendentes(sobra);
+    }
+
+    async function avisosVerificar(forcar) {
+        if (avisosChecando || !estaLogado() || !desbloqueadoNestaSessao) return;
+        if (!forcar && Date.now() - avisosChecadoEm < 10 * 60 * 1000) return;
+        avisosChecando = true;
+        try {
+            await avisosEnviarConfirmacoesGuardadas();
+            const r = await chamarRpcAdmin('avisos_pendentes');
+            avisosChecadoEm = Date.now();
+            const jaConfirmados = avisosPendentesLocais();
+            avisosFila = (Array.isArray(r) ? r : []).filter(a => a && Number.isSafeInteger(Number(a.id)) && jaConfirmados.indexOf(Number(a.id)) < 0);
+            if (avisosFila.length && !document.getElementById('modalAviso').classList.contains('aberto')) avisosMostrarProximo();
+        } catch (e) {
+            // sem internet ou função ainda não criada no servidor: tenta de novo na próxima abertura
+        } finally {
+            avisosChecando = false;
+        }
+    }
+
+    function avisosPreencherJanela(a, posicao, total, previa) {
+        document.getElementById('modalAvisoTitulo').textContent = String(a.titulo || '');
+        document.getElementById('modalAvisoTexto').textContent = String(a.texto || '');
+        let rodape = 'Publicado em ' + formatarDataHora(a.criado_em || new Date().toISOString());
+        if (a.expira_em) rodape += ' · vale até ' + formatarDataHora(a.expira_em);
+        document.getElementById('modalAvisoData').textContent = rodape;
+        const cont = document.getElementById('modalAvisoContador');
+        cont.textContent = previa ? 'Prévia: é assim que os técnicos vão ver' : (total > 1 ? 'Aviso ' + posicao + ' de ' + total : '');
+        cont.hidden = !cont.textContent;
+        document.getElementById('modalAvisoBotao').dataset.previa = previa ? '1' : '';
+        document.getElementById('modalAviso').classList.add('aberto');
+        setTimeout(() => { try { document.getElementById('modalAvisoBotao').focus(); } catch (e) {} }, 50);
+    }
+
+    var avisosTotalNaFila = 0;
+    function avisosMostrarProximo() {
+        if (!avisosFila.length) { document.getElementById('modalAviso').classList.remove('aberto'); return; }
+        if (!avisosTotalNaFila) avisosTotalNaFila = avisosFila.length;
+        const a = avisosFila[0];
+        avisosPreencherJanela(a, avisosTotalNaFila - avisosFila.length + 1, avisosTotalNaFila, false);
+    }
+
+    async function avisosEntendi() {
+        const botao = document.getElementById('modalAvisoBotao');
+        if (botao.dataset.previa) { document.getElementById('modalAviso').classList.remove('aberto'); return; }
+        const a = avisosFila.shift();
+        if (!avisosFila.length) avisosTotalNaFila = 0;
+        if (a) {
+            const id = Number(a.id);
+            try { await chamarRpcAdmin('marcar_aviso_lido', { p_aviso: id }); }
+            catch (e) { const l = avisosPendentesLocais(); if (l.indexOf(id) < 0) l.push(id); avisosGuardarPendentes(l); }
+        }
+        avisosMostrarProximo();
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') { try { avisosVerificar(false); } catch (e) {} }
+    });
+
+    // ---------------- ADMIN ----------------
+    function avisosLerFormulario() {
+        const titulo = String(document.getElementById('avisoTitulo').value || '').trim();
+        const texto = String(document.getElementById('avisoTexto').value || '').trim();
+        const ate = String(document.getElementById('avisoAte').value || '').trim();
+        return { titulo, texto, ate };
+    }
+
+    function avisosContarTexto() {
+        const t = document.getElementById('avisoTexto');
+        const c = document.getElementById('avisoTextoContador');
+        if (t && c) c.textContent = t.value.length + '/2000';
+    }
+
+    function avisosValidar(f) {
+        if (!f.titulo) return 'Escreva um título para o aviso.';
+        if (!f.texto) return 'Escreva o texto do aviso.';
+        if (f.titulo.length > 120) return 'O título pode ter até 120 letras.';
+        if (f.texto.length > 2000) return 'O texto pode ter até 2000 letras.';
+        if (f.ate) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(f.ate)) return 'Data de validade inválida.';
+            if (new Date(f.ate + 'T23:59:59-03:00').getTime() <= Date.now()) return 'A data de validade já passou.';
+        }
+        return '';
+    }
+
+    function avisosPrevia() {
+        const f = avisosLerFormulario();
+        const erro = avisosValidar(f);
+        if (erro) { mostrarMensagem(erro); return; }
+        avisosPreencherJanela({ titulo: f.titulo, texto: f.texto, criado_em: new Date().toISOString(),
+                                expira_em: f.ate ? f.ate + 'T23:59:59-03:00' : null }, 1, 1, true);
+    }
+
+    function avisosPublicar() {
+        const f = avisosLerFormulario();
+        const erro = avisosValidar(f);
+        if (erro) { mostrarMensagem(erro); return; }
+        confirmarAcao('Publicar o aviso "' + f.titulo + '" para todos? Ele aparece para cada técnico logo depois de entrar no app' +
+                      (f.ate ? ', até ' + f.ate.split('-').reverse().join('/') : '') + '.', async ok => {
+            if (!ok) return;
+            const st = document.getElementById('avisosStatus');
+            try {
+                await chamarRpcAdmin('admin_publicar_aviso', { p_titulo: f.titulo, p_texto: f.texto, p_expira_em: f.ate ? f.ate + 'T23:59:59-03:00' : null });
+                document.getElementById('avisoTitulo').value = '';
+                document.getElementById('avisoTexto').value = '';
+                document.getElementById('avisoAte').value = '';
+                avisosContarTexto();
+                if (st) { st.className = 'fb fb-ok'; st.textContent = 'Aviso publicado.'; }
+                mostrarMensagem('Aviso publicado. Cada técnico vai ver logo depois de entrar no app.');
+                adminCarregarAvisos(false);
+            } catch (e) {
+                const t = mensagemErroAdmin(e, 'publicar o aviso');
+                if (st) { st.className = 'fb fb-erro'; st.textContent = t; }
+                mostrarMensagem(t);
+            }
+        });
+    }
+
+    async function adminCarregarAvisos(manual) {
+        const lista = document.getElementById('avisosLista');
+        if (!lista) return;
+        if (avisosAdminDados === null) lista.innerHTML = '<div class="pend-vazio">Carregando...</div>';
+        try {
+            const r = await chamarRpcAdmin('admin_listar_avisos');
+            avisosAdminDados = Array.isArray(r) ? r : [];
+            renderizarAvisosAdmin();
+            if (avisosAberto !== null) avisosCarregarLeituras(avisosAberto);
+        } catch (e) {
+            lista.innerHTML = '<div class="pend-vazio">' + htmlSeguro(mensagemErroAdmin(e, 'carregar os avisos')) + '</div>';
+        }
+    }
+
+    function renderizarAvisosAdmin() {
+        const lista = document.getElementById('avisosLista');
+        if (!lista || avisosAdminDados === null) return;
+        if (!avisosAdminDados.length) { lista.innerHTML = '<div class="pend-vazio">Nenhum aviso publicado ainda.</div>'; return; }
+        lista.innerHTML = avisosAdminDados.map(a => {
+            const id = Number(a.id);
+            const status = a.valendo ? '<span class="conta-selo conta-selo-ok">Valendo</span>'
+                         : (a.ativo ? '<span class="conta-selo">Vencido</span>' : '<span class="conta-selo">Encerrado</span>');
+            const conf = Number(a.confirmaram) || 0, pub = Number(a.publico) || 0;
+            const pct = pub ? Math.round(conf * 100 / pub) : 0;
+            return '<div class="aviso-item" data-id="' + id + '">' +
+                '<div class="conta-topo"><strong class="aviso-titulo">' + htmlSeguro(a.titulo) + '</strong>' + status + '</div>' +
+                '<div class="pend-data">' + htmlSeguro('Publicado ' + formatarDataHora(a.criado_em) + (a.expira_em ? ' · até ' + formatarDataHora(a.expira_em) : ' · sem data para acabar')) + '</div>' +
+                '<div class="aviso-texto-curto">' + htmlSeguro(String(a.texto || '').slice(0, 160)) + (String(a.texto || '').length > 160 ? '…' : '') + '</div>' +
+                '<div class="aviso-barra" aria-hidden="true"><span style="width:' + pct + '%"></span></div>' +
+                '<div class="aviso-conta">✅ ' + conf + ' de ' + pub + ' técnicos confirmaram (' + pct + '%)</div>' +
+                '<div class="conta-acoes">' +
+                    '<button type="button" class="conta-btn btn-secundario" data-acao-aviso="ver">' + (avisosAberto === id ? 'Fechar lista' : '👀 Quem viu') + '</button>' +
+                    (a.valendo ? '<button type="button" class="conta-btn conta-btn-perigo" data-acao-aviso="encerrar">Encerrar</button>' : '') +
+                '</div>' +
+                (avisosAberto === id ? '<div class="aviso-leituras" id="avisoLeituras' + id + '"><div class="pend-vazio">Carregando...</div></div>' : '') +
+            '</div>';
+        }).join('');
+    }
+
+    async function avisosCarregarLeituras(id) {
+        const el = document.getElementById('avisoLeituras' + id);
+        if (!el) return;
+        try {
+            const r = await chamarRpcAdmin('admin_leituras_aviso', { p_aviso: id });
+            const viram = (r || []).filter(x => x.lido_em), nao = (r || []).filter(x => !x.lido_em);
+            el.innerHTML =
+                '<div class="aviso-grupo">✅ Confirmaram (' + viram.length + ')</div>' +
+                (viram.length ? viram.map(x => '<div class="hist-item">' + htmlSeguro(x.email) + ' <span class="pend-data">· ' + formatarDataHora(x.lido_em) + '</span></div>').join('') : '<div class="pend-vazio">Ninguém ainda.</div>') +
+                '<div class="aviso-grupo">⏳ Ainda não viram (' + nao.length + ')</div>' +
+                (nao.length ? nao.map(x => '<div class="hist-item">' + htmlSeguro(x.email) + ' <span class="pend-data">· último login ' + (x.ultimo_login ? tempoRelativo(x.ultimo_login) : 'nunca') + '</span></div>').join('') : '<div class="pend-vazio">Todos já viram. 🎉</div>');
+        } catch (e) {
+            el.innerHTML = '<div class="pend-vazio">' + htmlSeguro(mensagemErroAdmin(e, 'carregar quem viu')) + '</div>';
+        }
+    }
+
+    document.addEventListener('click', ev => {
+        const b = ev.target && ev.target.closest ? ev.target.closest('#avisosLista [data-acao-aviso]') : null;
+        if (!b) return;
+        const item = b.closest('.aviso-item');
+        const id = item ? Number(item.getAttribute('data-id')) : NaN;
+        if (!Number.isSafeInteger(id)) return;
+        const a = (avisosAdminDados || []).find(x => Number(x.id) === id);
+        if (b.getAttribute('data-acao-aviso') === 'ver') {
+            avisosAberto = avisosAberto === id ? null : id;
+            renderizarAvisosAdmin();
+            if (avisosAberto !== null) avisosCarregarLeituras(id);
+        } else if (b.getAttribute('data-acao-aviso') === 'encerrar' && a) {
+            confirmarAcao('Encerrar o aviso "' + a.titulo + '"? Ele para de aparecer para quem ainda não viu. A lista de quem confirmou continua guardada.', async ok => {
+                if (!ok) return;
+                try { await chamarRpcAdmin('admin_encerrar_aviso', { p_aviso: id }); mostrarMensagem('Aviso encerrado.'); adminCarregarAvisos(false); }
+                catch (e) { mostrarMensagem(mensagemErroAdmin(e, 'encerrar o aviso')); }
+            });
+        }
+    });
+
     async function cadastrarConta(email, senha) {
         const r = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
             method: 'POST',
@@ -2600,6 +2859,7 @@ select[multiple] { height: auto; }
         desbloqueadoNestaSessao = true;
         document.getElementById('telaLoginObrigatorio').style.display = 'none';
         try { iniciarIndicadoresConta(); } catch (e) {}
+        try { setTimeout(() => avisosVerificar(true), 400); } catch (e) {}
     }
 
     function renderizarLoginObrigatorio() {
@@ -2934,7 +3194,7 @@ select[multiple] { height: auto; }
     // ==================================================================
 
     // Configurado — repositório GitHub Pages de bruno.henrique.bonfim
-    const APP_VERSAO_ATUAL = '1.10.6';
+    const APP_VERSAO_ATUAL = '1.10.7';
     const URL_MANIFESTO_ATUALIZACAO = 'https://19bruno94.github.io/pontospro-app/version.json';
 
     async function verificarAtualizacao(manual = false) {
@@ -3813,7 +4073,7 @@ select[multiple] { height: auto; }
     }
 
     // ---------- painel Admin: abas (Uso | Pendentes | Mensagens | Contas) ----------
-    var ADMIN_ABAS = { uso: ['adminAbaUso', 'adminSecUso'], pend: ['adminAbaPend', 'adminSecPend'], msg: ['adminAbaMsg', 'adminSecMsg'], contas: ['adminAbaContas', 'adminSecContas'] };
+    var ADMIN_ABAS = { uso: ['adminAbaUso', 'adminSecUso'], pend: ['adminAbaPend', 'adminSecPend'], msg: ['adminAbaMsg', 'adminSecMsg'], contas: ['adminAbaContas', 'adminSecContas'], avisos: ['adminAbaAvisos', 'adminSecAvisos'] };
 
     function adminAoAbrir() {
         adminAbrirAba(adminAba);
@@ -3834,6 +4094,7 @@ select[multiple] { height: auto; }
         if (adminAba === 'uso') carregarPainelAdminSePreciso();
         else if (adminAba === 'pend') adminCarregarPendentes(false);
         else if (adminAba === 'contas') { if (contasDados === null || contasErro) adminCarregarContas(false); else renderizarContas(); }
+        else if (adminAba === 'avisos') adminCarregarAvisos(false);
         else adminCarregarConversas(false);
     }
 
@@ -4579,6 +4840,16 @@ select[multiple] { height: auto; }
             <button type="button" onclick="modalConfirmacaoResponder(true)">Confirmar</button>
             <button type="button" class="btn-secundario" onclick="modalConfirmacaoResponder(false)">Cancelar</button>
         </div>
+    </div>
+</div>
+
+<div id="modalAviso" role="dialog" aria-modal="true" aria-labelledby="modalAvisoTitulo" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:10002; align-items:center; justify-content:center; padding:16px;">
+    <div class="aviso-janela">
+        <p class="aviso-selo">📢 AVISO IMPORTANTE <span id="modalAvisoContador" hidden></span></p>
+        <h3 id="modalAvisoTitulo"></h3>
+        <div id="modalAvisoTexto" class="aviso-corpo"></div>
+        <p id="modalAvisoData" class="aviso-rodape"></p>
+        <button type="button" id="modalAvisoBotao" onclick="avisosEntendi()">✅ Entendi</button>
     </div>
 </div>
 
